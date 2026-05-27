@@ -882,7 +882,7 @@ function App(){
 
   useEffect(()=>{
     if(scr!=="game"&&scr!=="setup")return;
-    const state={scr,step,players,gid,hmode,abon,apen,money,uval,beer,hc,hp,hole,scores,hd,sh,drks,rc,snake,wolfIdx,wolfPar,wolfLone,wolfHoles,bankerIdx,sixesTeams,bingoClaims,courseName,courseSlope,courseCR,playerTees,savedAt:Date.now()};
+    const state={scr,step,players,gid,hmode,abon,apen,money,uval,beer,hc,hp,hole,scores,hd,sh,drks,rc,snake,wolfIdx,wolfPar,wolfLone,wolfHoles,bankerIdx,rcDifficulty,sixesTeams,bingoClaims,courseName,courseSlope,courseCR,playerTees,savedAt:Date.now()};
     sto(SK,state);
     // If host: broadcast to room
     if(isHost&&rc&&scr==="game"){
@@ -922,7 +922,7 @@ function App(){
     setScores(s.scores||{});setHd(s.hd||{});setSh(s.sh||null);setDrks(s.drks||{});
     setRc(s.rc||"");setSnake(s.snake||false);setWolfIdx(s.wolfIdx||0);
     setWolfPar(s.wolfPar||null);setWolfLone(s.wolfLone||false);
-    setStep(s.step||0);setSc(s.scr||"game");if(s.wolfHoles)setWolfHoles(s.wolfHoles||{});if(s.bankerIdx!=null)setBankerIdx(s.bankerIdx||0);if(s.sixesTeams)setSixesTeams(s.sixesTeams||{});if(s.bingoClaims)setBingoClaims(s.bingoClaims||{});if(s.courseName)setCourseName(s.courseName);if(s.courseSlope)setCourseSlope(s.courseSlope);if(s.courseCR)setCourseCR(s.courseCR);if(s.playerTees)setPlayerTees(s.playerTees);
+    setStep(s.step||0);setSc(s.scr||"game");if(s.wolfHoles)setWolfHoles(s.wolfHoles||{});if(s.rcDifficulty)setRcDifficulty(s.rcDifficulty||"mix");if(s.bankerIdx!=null)setBankerIdx(s.bankerIdx||0);if(s.sixesTeams)setSixesTeams(s.sixesTeams||{});if(s.bingoClaims)setBingoClaims(s.bingoClaims||{});if(s.courseName)setCourseName(s.courseName);if(s.courseSlope)setCourseSlope(s.courseSlope);if(s.courseCR)setCourseCR(s.courseCR);if(s.playerTees)setPlayerTees(s.playerTees);
   }
 
   function handleImg(ev){
