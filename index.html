@@ -516,8 +516,12 @@ function sfP(score,par,strokes){const net=score-strokes,d=net-par;if(d<=-2)retur
 // L is set dynamically after lang state is available (see in App)
 
 async function callAI(msgs,max,key){
+  // Use user's own API key from localStorage (SECURITY: never hardcode keys in client code)
   const k=key||localStorage.getItem("golf_apikey")||"";
-  if(!k){return JSON.stringify({error:"no_key"});}
+  if(!k||!k.startsWith("sk-ant-")){
+    console.warn("No valid API key found. User must add their own.");
+    return"{}";
+  }
   try{
     const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":k,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:max||500,messages:msgs})});
     const d=await res.json();
@@ -723,6 +727,24 @@ function ProfForm({pd,setPd,ip,anl,aiR,handleImg,runAI,lang}){
       h("div",null,
         h("label",{className:"lbl"},L("height")),
         h("input",{type:"number",value:pd.height,onChange:ev=>{const v=ev.target.value;setPd(d=>({...d,height:v}));},style:{fontSize:18,padding:"14px"}})
+      ),
+      h("div",{style:{marginTop:12}},
+        h("label",{className:"lbl"},
+          L("birthdate")+" ",
+          isOver18(pd.birthdate)
+            ? h("span",{style:{color:"var(--green)",fontSize:11,fontWeight:700}},"✓ 18+ · Øl-modus OK 🍺")
+            : pd.birthdate
+              ? h("span",{style:{color:"var(--red)",fontSize:11}},"Under 18")
+              : h("span",{style:{color:"var(--muted)",fontSize:11}},"Legg til for øl-modus")
+        ),
+        h("input",{
+          type:"date",
+          value:pd.birthdate||"",
+          onChange:ev=>setPd(d=>({...d,birthdate:ev.target.value})),
+          style:{fontSize:15,padding:"12px",width:"100%",boxSizing:"border-box",
+            border:"1.5px solid "+(isOver18(pd.birthdate)?"var(--green)":"var(--border2)"),
+            borderRadius:8,background:"var(--bg2)",color:"var(--text)"}
+        })
       )
     )
   );
@@ -836,9 +858,9 @@ function App(){
   const [showGI,setShowGI]=useState(false);
   const [rcRules,setRcRules]=useState(()=>shuf(RULE_CHANGE));
   const [rcDifficulty,setRcDifficulty]=useState("mix");
+  const rcInputRef=React.useRef(null);
   const [rcRerolls,setRcRerolls]=useState({}); // {hole: [pid,...]} who voted for reroll
   const [rcOverrides,setRcOverrides]=useState({});
-  const [rcCustomInput,setRcCustomInput]=useState(""); // custom rule being typed // {hole: "custom rule string"} // mix/easy/medium/hard/extreme
   const [wolfIdx,setWolfIdx]=useState(0);
   const [wolfPar,setWolfPar]=useState(null);
   const [wolfLone,setWolfLone]=useState(false);
@@ -868,7 +890,16 @@ function App(){
       // Even if cloud failed, use any cached local profile
       if(!prof_&&p)prof_=p;
       if(prof_){setProf(prof_);setAged(isOver18(prof_.birthdate));if(prof_.lang)setLang(prof_.lang);}
-      if(s&&s.players?.length>0){setSaved(s);setSplashDest(prof_?"resume":"agecheck");}
+      if(s&&s.players?.length>0){
+        setSaved(s);
+        // AUTO-RESUME: var vi midt i en runde da appen lukket? Hopp rett inn!
+        if(s.scr==="game"&&prof_&&isOver18(prof_.birthdate)){
+          setIsHost(true);
+          rfState({...s,scr:"game"});
+          return; // skip splash helt
+        }
+        setSplashDest(prof_?"resume":"agecheck");
+      }
       else setSplashDest(prof_?"home":"agecheck");
     });
   },[]);
@@ -882,7 +913,7 @@ function App(){
 
   useEffect(()=>{
     if(scr!=="game"&&scr!=="setup")return;
-    const state={scr,step,players,gid,hmode,abon,apen,money,uval,beer,hc,hp,hole,scores,hd,sh,drks,rc,snake,wolfIdx,wolfPar,wolfLone,wolfHoles,bankerIdx,rcDifficulty,sixesTeams,bingoClaims,courseName,courseSlope,courseCR,playerTees,savedAt:Date.now()};
+    const state={scr,step,players,gid,hmode,abon,apen,money,uval,beer,hc,hp,hole,scores,hd,sh,drks,rc,snake,wolfIdx,wolfPar,wolfLone,wolfHoles,bankerIdx,rcDifficulty,sixesTeams,bingoClaims,jokerCards,courseName,courseSlope,courseCR,playerTees,savedAt:Date.now()};
     sto(SK,state);
     // If host: broadcast to room
     if(isHost&&rc&&scr==="game"){
@@ -922,7 +953,7 @@ function App(){
     setScores(s.scores||{});setHd(s.hd||{});setSh(s.sh||null);setDrks(s.drks||{});
     setRc(s.rc||"");setSnake(s.snake||false);setWolfIdx(s.wolfIdx||0);
     setWolfPar(s.wolfPar||null);setWolfLone(s.wolfLone||false);
-    setStep(s.step||0);setSc(s.scr||"game");if(s.wolfHoles)setWolfHoles(s.wolfHoles||{});if(s.rcDifficulty)setRcDifficulty(s.rcDifficulty||"mix");if(s.bankerIdx!=null)setBankerIdx(s.bankerIdx||0);if(s.sixesTeams)setSixesTeams(s.sixesTeams||{});if(s.bingoClaims)setBingoClaims(s.bingoClaims||{});if(s.courseName)setCourseName(s.courseName);if(s.courseSlope)setCourseSlope(s.courseSlope);if(s.courseCR)setCourseCR(s.courseCR);if(s.playerTees)setPlayerTees(s.playerTees);
+    setStep(s.step||0);setSc(s.scr||"game");if(s.wolfHoles)setWolfHoles(s.wolfHoles||{});if(s.rcDifficulty)setRcDifficulty(s.rcDifficulty||"mix");if(s.bankerIdx!=null)setBankerIdx(s.bankerIdx||0);if(s.sixesTeams)setSixesTeams(s.sixesTeams||{});if(s.bingoClaims)setBingoClaims(s.bingoClaims||{});if(s.jokerCards)setJokerCards(s.jokerCards||{});if(s.courseName)setCourseName(s.courseName);if(s.courseSlope)setCourseSlope(s.courseSlope);if(s.courseCR)setCourseCR(s.courseCR);if(s.playerTees)setPlayerTees(s.playerTees);
   }
 
   function handleImg(ev){
@@ -943,17 +974,48 @@ function App(){
     if(!ib){setAiR(randomNick(pd.name));return;}
     setAnl(true);
     try{
-      const prompt=`Du ser på et bilde av en person. 
-Lag et morsomt norsk golf-kallenavn BASERT PÅ UTSEENDET til personen.
-Bruk ting du ser: kroppsbygning, ansiktsuttrykk, antrekk, hår, alder, vibe, stil.
-Kallenavnet skal:
-- Være 2-4 ord og kreativt
-- Handle om NOE SPESIFIKT du ser på personen
-- Være morsomt og golfrelatert
-Eksempler: "Bushy-beard Bunkermester", "Fairway-farfaren", "Hipster-Par-Hunter", "Solbrent Greenoverstyrer"
+      const prompt=`Du er Sandbagger-roasteren — en hardtslående norsk golfkommentator som lager BRUTALT MORSOMME kallenavn til golfere basert på hvordan de SER UT på bildet.
 
-Svar KUN med JSON (ingen markdown, ingen tekst rundt):
-{"nickname":"Ditt-kallenavn","reason":"Kort forklaring basert på utseende, 5-8 ord","age":32,"height":180,"weight":82,"gender":"mann"}`;
+KRITISK REGEL: Du MÅ analysere det SPESIFIKKE bildet. Generelle/trygge navn er FORBUDT.
+Hvis bildet viser noen som drikker → navnet MÅ referere til drikkingen.
+Hvis bildet viser noen i fest-modus → navnet MÅ referere til festen.
+Hvis bildet viser noen i positur/sving → navnet MÅ referere til posituren.
+Hvis bildet viser klær/caps/tatoveringer → bruk DET som inspirasjon.
+
+OBSERVASJON FØRST (tenk i hodet, ikke skriv det):
+1. Hva GJØR personen på bildet? (drikker øl, gjør gangstertegn, poserer, smiler, ser flau ut...)
+2. Hva HAR de på seg? (caps, jakke, tank top, dressjakke...)
+3. Hvilken VIBE har de? (full, seriøs, kjekkas, sliten, kjedelig, party...)
+4. Synlige detaljer: tatoveringer, skjegg, briller, hår, ansiktsuttrykk
+
+NAVNET skal være ETT FULLT NORSK NAVN (fornavn + etternavn) som ROASTER personen kjærlig:
+
+Eksempler på BRUTAL OBSERVASJON (følg DENNE stilen):
+- Bilde av fyr med øl og party-vibe → "Mojito-Mons Hull19sen"
+- Bilde av fyr med tatoveringer som drikker shots → "Tequila-Tom Bunkerstad"
+- Bilde av selvsikker fyr med dressjakke → "Ole-Martin Overdriversen"
+- Bilde av tung fyr i bunker-positur → "Lars-Petter Sandgrav"
+- Bilde av sliten gammel mann → "Per-Erik Provisorisksen"
+- Bilde av kjekkas med caps og solbriller → "Kjetil-André Range-Romeo"
+- Bilde av dame med golfkøller → "Vigdis Putterstrand"
+- Bilde av fyr i gangstertegn → "Snoop Drivermann" eller "Pablo Pinpoint-aldri"
+- Bilde av fyr som lener seg på en kølle → "Slow-Play Sigurd"
+- Bilde av fyr med øl i hånda → "Pilsner-Petter Greenfee"
+
+ETTERNAVN-INSPIRASJON (mix golf-termer med norske endinger):
+Endinger: -stad, -viken, -gaard, -strand, -mann, -berg, -sen, -fjord, -dal, -nes
+Golf-stammer: Bunker, Slice, Hook, Bogey, Birdie, Eagle, Range, Green, Pin, Pitch, Putt, Drive, Wedge, Tee, Par, Mulligan, Provisorisk, Sandbag, Topspin, Shank, Snowman, Hull19, Pre-game
+
+ABSOLUTT FORBUDT (for generiske/late navn):
+- "Chip-B" (hva er det engang?)
+- "Birdie-Spiller" (observerer INGENTING)
+- "Fairway-Frank" (kjedelig)
+- Korte navn som "Eagle-A" eller "Drive-T"
+
+PÅKREVD: Navnet MÅ være spesifikt for DETTE bildet. Reason-feltet skal forklare nøyaktig HVA du så som inspirerte navnet.
+
+Svar KUN med JSON (ingen markdown):
+{"nickname":"Mojito-Mons Hull19sen","reason":"Holder en grønn drink, party-vibe, ser ut som han trives bedre på klubbhuset enn på banen","age":32,"height":182,"weight":88,"gender":"mann"}`;
       const txt=await callAI([{role:"user",content:[
         {type:"image",source:{type:"base64",media_type:im||"image/jpeg",data:ib}},
         {type:"text",text:prompt}
@@ -961,7 +1023,7 @@ Svar KUN med JSON (ingen markdown, ingen tekst rundt):
       const m=txt.match(/\{[\s\S]*?\}/);
       if(!m)throw new Error("Ingen JSON i svar");
       const res=JSON.parse(m[0]);
-      if(!res||typeof res.nickname!=="string"||res.nickname.length<2)throw new Error("Ugyldig kallenavn: "+JSON.stringify(res));
+      if(!res||typeof res.nickname!=="string"||res.nickname.length<2)throw new Error("Ugyldig navn");
       setAiR(res);
       setPd(d=>({...d,weight:String(res.weight||d.weight),height:String(res.height||d.height),gender:(res.gender==="kvinne"?"kvinne":"mann")}));
     }catch(e){
@@ -1018,7 +1080,76 @@ Svar KUN med JSON (ingen markdown, ingen tekst rundt):
   function addDrink(pid,units){setDrks(d=>({...d,[pid]:[...(d[pid]||[]),{units,time:Date.now()}]}));}
   function recEv(pid,eid,isB){const key=hole+"-"+pid+"-"+eid;setHd(d=>{if(d[key]){const n={...d};delete n[key];return n;}return{...d,[key]:{pid,eid,isB,hole,value:isB?uval:-uval}};});if(eid==="three_putt")setSh(pid);}
   function hasEv(pid,eid){return!!(hd[hole+"-"+pid+"-"+eid]);}
-  function moneyT(){const t={};players.forEach(p=>t[p.id]=0);Object.values(hd).forEach(({pid,value})=>{if(t[pid]!==undefined)t[pid]+=value;});if(snake&&sh&&t[sh]!==undefined)t[sh]-=uval*2;return t;}
+  // Delt Wolf-beregning — brukes BAADE i game-skjerm og i summary (fikser bug der Wolf-penger forsvant)
+  function wolfT(){
+    const ws={};players.forEach(p=>ws[p.id]=0);
+    if(gid!=="wolf")return ws;
+    for(let hh=1;hh<=hc;hh++){
+      const wIdx=(hh-1)%players.length;
+      const wolf=players[wIdx];
+      if(!wolf)continue;
+      const dec=wolfHoles?.[hh]||{};
+      const partner=dec.par?players.find(p=>p.id===dec.par):null;
+      const lone=dec.lone||false;
+      const wolfScore=scores[wolf.id]?.[hh];
+      if(wolfScore==null)continue;
+      const opponents=players.filter(p=>p.id!==wolf.id&&(!partner||p.id!==partner.id));
+      const oppScores=opponents.map(p=>scores[p.id]?.[hh]).filter(s=>s!=null);
+      if(!oppScores.length)continue;
+      const mult=lone?3:1;const bet=money?uval:1;
+      if(lone){
+        const bestOpp=Math.min(...oppScores);
+        if(wolfScore<bestOpp){opponents.forEach(p=>{ws[wolf.id]+=bet*mult;ws[p.id]-=bet;});}
+        else if(wolfScore>bestOpp){opponents.forEach(p=>{ws[wolf.id]-=bet*mult;ws[p.id]+=bet;});}
+      }else if(partner){
+        const pScore=scores[partner.id]?.[hh];
+        if(pScore==null)continue;
+        const teamBest=Math.min(wolfScore,pScore);const oppBest=Math.min(...oppScores);
+        if(teamBest<oppBest){ws[wolf.id]+=bet;ws[partner.id]+=bet;opponents.forEach(p=>ws[p.id]-=bet);}
+        else if(teamBest>oppBest){ws[wolf.id]-=bet;ws[partner.id]-=bet;opponents.forEach(p=>ws[p.id]+=bet);}
+      }else{
+        const bestOpp=Math.min(...oppScores);
+        if(wolfScore<bestOpp){opponents.forEach(p=>{ws[wolf.id]+=bet;ws[p.id]-=bet;});}
+        else if(wolfScore>bestOpp){opponents.forEach(p=>{ws[wolf.id]-=bet;ws[p.id]+=bet;});}
+      }
+    }
+    return ws;
+  }
+  // Samlet pengeberegning for ALLE pengespill — speiler game-skjermens logikk
+  // saa sluttoppgjoeret (summary) viser korrekte penger. Fikser bug der penger forsvant.
+  function gameT(){
+    const t={};players.forEach(p=>t[p.id]=0);
+    const bet=money?uval:1;
+    if(gid==="wolf"){return wolfT();}
+    if(gid==="skins"){
+      const skinMap={};players.forEach(p=>skinMap[p.id]=0);let pot=1;
+      for(let hh=1;hh<=hc;hh++){const hs=players.map(p=>({id:p.id,s:scores[p.id]?.[hh]})).filter(x=>x.s!=null);if(hs.length<2){continue;}const mn=Math.min(...hs.map(x=>x.s));const ws=hs.filter(x=>x.s===mn);if(ws.length===1){skinMap[ws[0].id]+=pot;pot=1;}else pot++;}
+      // Nullsum: hver skin er verdt 'bet' fra hver andre spiller
+      const totalSkins=Object.values(skinMap).reduce((a,b)=>a+b,0);
+      players.forEach(p=>{t[p.id]=(skinMap[p.id]*bet*(players.length-1))-((totalSkins-skinMap[p.id])*bet);});
+      return t;
+    }
+    if(gid==="nassau"){
+      const holeWinner=hh=>{const hs=players.map(p=>({id:p.id,s:scores[p.id]?.[hh]})).filter(x=>x.s!=null);if(hs.length<2)return null;const mn=Math.min(...hs.map(x=>x.s));const ws=hs.filter(x=>x.s===mn);return ws.length===1?ws[0].id:null;};
+      const periodScore=(from,to_)=>{const wins={};players.forEach(p=>wins[p.id]=0);for(let hh=from;hh<=to_;hh++){const w=holeWinner(hh);if(w)wins[w]++;}const sorted=Object.entries(wins).sort((a,b)=>b[1]-a[1]);if(!sorted.length||sorted[0][1]===0)return null;if(sorted.length>1&&sorted[0][1]===sorted[1][1])return{winner:null,tied:true};return{winner:sorted[0][0],tied:false};};
+      const periods=hc<=9?[periodScore(1,hc)]:[periodScore(1,9),periodScore(10,hc),periodScore(1,hc)];
+      periods.forEach(res=>{if(res&&res.winner){t[res.winner]+=bet*(players.length-1);players.filter(p=>p.id!==res.winner).forEach(p=>t[p.id]-=bet);}});
+      return t;
+    }
+    if(gid==="high_low"){
+      for(let hh=1;hh<=hc;hh++){const hs=players.map(p=>({id:p.id,s:scores[p.id]?.[hh]})).filter(x=>x.s!=null);if(hs.length<2)continue;const mn=Math.min(...hs.map(x=>x.s));const mx=Math.max(...hs.map(x=>x.s));if(mn===mx)continue;const lows=hs.filter(x=>x.s===mn);const highs=hs.filter(x=>x.s===mx);if(lows.length===1&&highs.length===1){t[lows[0].id]+=bet;t[highs[0].id]-=bet;}}
+      return t;
+    }
+    if(gid==="banker"){
+      const bankPl=players[bankerIdx%players.length];
+      const others=players.filter(p=>p.id!==bankPl.id);
+      for(let hh=1;hh<=hc;hh++){const bS=scores[bankPl.id]?.[hh];if(bS==null)continue;others.forEach(op=>{const oS=scores[op.id]?.[hh];if(oS==null)return;if(bS<oS){t[bankPl.id]+=bet;t[op.id]-=bet;}else if(bS>oS){t[bankPl.id]-=bet;t[op.id]+=bet;}});}
+      return t;
+    }
+    // Spill uten penge-nullsum (nines/bingo=poeng, rabbit/joker=pott, scramble/sixes=lag, rule_change/vegas) — ingen auto-penger
+    return t;
+  }
+  function moneyT(){const t={};players.forEach(p=>t[p.id]=0);Object.values(hd).forEach(({pid,value})=>{if(t[pid]!==undefined)t[pid]+=value;});if(snake&&sh&&t[sh]!==undefined)t[sh]-=uval*2;const gt=gameT();players.forEach(p=>{if(t[p.id]!==undefined)t[p.id]+=(gt[p.id]||0);});return t;}
 
   const T=moneyT();
   const holePar=hp[String(hole)]||HOLE_PARS[hole]||4;
@@ -1089,30 +1220,35 @@ Svar KUN med JSON (ingen markdown, ingen tekst rundt):
   )
 );
 
-  if(scr==="agecheck")return h("div",{style:{padding:"2rem 0"}},
-    h("p",{style:{fontSize:48,textAlign:"center",margin:"0 0 8px"}},"⛳"),
-    h("h2",{style:{fontSize:22,fontWeight:800,textAlign:"center",margin:"0 0 8px"}},"Sandbagger"),
-    h("p",{style:{fontSize:13,color:"#5a6080",textAlign:"center",margin:"0 0 2rem"}},"Norsk alkohollov krever aldersbekreftelse"),
-    h("div",{className:"card"},
-      h("p",{style:{fontSize:15,fontWeight:700,margin:"0 0 12px"}},"Er du over 18 år?"),
-      h("label",{className:"lbl"},"Fødselsdato"),
-      h("input",{type:"date",value:ageDr,onChange:ev=>setAgeDr(ev.target.value),style:{marginBottom:12}}),
-      h("button",{className:"btn btnp",style:{marginTop:4},onClick:()=>{
-        if(!ageDr){alert("Skriv inn fødselsdato");return;}
-        const bd=new Date(ageDr),td=new Date();let age=td.getFullYear()-bd.getFullYear();
-        const m=td.getMonth()-bd.getMonth();if(m<0||(m===0&&td.getDate()<bd.getDate()))age--;
-        setAged(age>=18);setSc(saved?"resume":"createprofile");
-      }},"✅ Bekreft og fortsett"),
-      h("button",{className:"btn",style:{marginTop:8},onClick:()=>{setAged(false);setSc(saved?"resume":"createprofile");}},"Hopp over (øl-modus utilgjengelig)")
+  if(scr==="agecheck")return h("div",{style:{position:"relative",minHeight:"100vh",background:"var(--bg)"}},
+    h(PhotoBg,{screenKey:"splash"}),
+    h("div",{style:{position:"relative",zIndex:1,minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center",padding:"2rem 20px"}},
+      h("p",{style:{fontSize:56,textAlign:"center",margin:"0 0 8px"}},"⛳"),
+      h("h2",{style:{fontFamily:"'Bebas Neue',Impact,sans-serif",fontSize:64,textAlign:"center",margin:"0 0 4px",color:"#F0F0F0",letterSpacing:"0.02em",lineHeight:1}},"SANDBAGGER"),
+      h("p",{style:{fontSize:13,color:"var(--muted)",textAlign:"center",margin:"0 0 2rem",letterSpacing:"0.08em",textTransform:"uppercase"}},"Norsk alkohollov krever aldersbekreftelse"),
+      h("div",{className:"card"},
+        h("p",{style:{fontSize:13,fontWeight:700,color:"var(--muted)",marginBottom:8,textTransform:"uppercase",letterSpacing:"0.08em"}},"Er du over 18 år?"),
+        h("label",{style:{fontSize:11,fontWeight:700,color:"var(--muted)",letterSpacing:"0.1em",textTransform:"uppercase",display:"block",marginBottom:6}},"FØDSELSDATO"),
+        h("input",{type:"date",value:ageIn,onChange:ev=>setAgeIn(ev.target.value),style:{width:"100%",marginBottom:16,padding:"12px",fontSize:16,borderRadius:10,border:"1.5px solid var(--border2)",background:"var(--bg2)",color:"var(--text)",boxSizing:"border-box"}}),
+        h("button",{className:"btn btnp",onClick:()=>{if(!ageIn)return;const ok=isOver18(ageIn);setAged(ok);if(prof){const np={...prof,birthdate:ageIn};setProf(np);saveProfileLocal(np);sto(PK,np);}setSc("home");}},
+          h("span",null,"✅ Bekreft og fortsett")
+        )
+      ),
+      h("button",{onClick:()=>setSc("home"),style:{marginTop:16,background:"none",border:"none",color:"var(--muted)",fontSize:13,cursor:"pointer",textAlign:"center",width:"100%",padding:"8px"}},
+        "Hopp over (øl-modus utilgjengelig)"
+      )
     )
-  );
+  )
 
-  if(scr==="createprofile")return h("div",{style:{padding:"1rem 0"}},
+  if(scr==="createprofile")return h("div",{style:{position:"relative",minHeight:"100vh",background:"var(--bg)",padding:"1rem 0"}},
+    h(PhotoBg,{screenKey:"spillere"}),
+    h("div",{style:{position:"relative",zIndex:1,padding:"64px 20px 80px"}},
     h("p",{style:{fontSize:13,fontWeight:800,color:"var(--accent)",letterSpacing:"0.1em",margin:"0 0 4px",textTransform:"uppercase"}},"⛳ SANDBAGGER"),
     h("h2",{style:{fontSize:20,fontWeight:800,margin:"0 0 4px"}},"Din profil"),
     h("p",{style:{fontSize:13,color:"#6a7098",margin:"0 0 1.5rem"}},"Last opp bilde → AI lager morsomt kallenavn basert på utseendet! 😄"),
     h(ProfForm,{pd,setPd,ip,anl,aiR,handleImg,runAI,lang}),
     h("button",{className:"btn btnp",disabled:!pd.name.trim(),onClick:()=>{const p=saveProf();setPlayers([p]);setSc("home");}},pd.name.trim()?"Lagre og start →":"Skriv inn navn")
+    )
   );
 
   if(scr==="home")return h("div",{style:{position:"relative",minHeight:"100vh",background:"var(--bg)"}},
@@ -1214,7 +1350,9 @@ Svar KUN med JSON (ingen markdown, ingen tekst rundt):
   )
   );
 
-  if(scr==="joinroom")return h("div",{style:{padding:"1rem 0"}},
+  if(scr==="joinroom")return h("div",{style:{position:"relative",minHeight:"100vh",background:"var(--bg)",padding:"1rem 0"}},
+    h(PhotoBg,{screenKey:"home"}),
+    h("div",{style:{position:"relative",zIndex:1,padding:"64px 20px 80px"}},
     h("button",{className:"btnback",onClick:()=>setSc("home")},L("back")),
     h("h2",{style:{fontSize:18,fontWeight:800,margin:"0 0 1.5rem"}},"Bli med i runde"),
     h("input",{placeholder:"GOLF-1234",value:rcode,onChange:ev=>setRcode(ev.target.value.toUpperCase()),style:{fontSize:20,textAlign:"center",letterSpacing:6,marginBottom:12}}),
@@ -1227,32 +1365,35 @@ setIsHost(false);
 const existingIds=(rd.players||[]).map(p=>p.id);
 const allPlayers=prof&&!existingIds.includes(prof.id)?[...( rd.players||[]),prof]:(rd.players||[]);
 rfState({...rd,players:allPlayers,scr:"game"});}},"Bli med")
+    )
   );
 
   if(scr==="resume"&&saved){
     const ago=Math.round((Date.now()-(saved.savedAt||Date.now()))/60000);
-    return h("div",{style:{padding:"2rem 0"}},
-      h("p",{style:{fontSize:48,textAlign:"center",margin:"0 0 8px"}},"⛳"),
-      h("h2",{style:{fontSize:22,fontWeight:800,textAlign:"center",margin:"0 0 1.5rem"}},L("welcomeBack")),
-      h("div",{className:"card ci"},
-        h("p",{style:{fontSize:11,fontWeight:800,color:"#4d9fff",margin:"0 0 4px",letterSpacing:1.5}},"LAGRET RUNDE — "+(ago<60?ago+" min siden":Math.round(ago/60)+"t siden")),
-        h("p",{style:{fontSize:15,fontWeight:700,margin:"0 0 8px"}},saved.players?.map(p=>p.name).join(", ")),
-        h("p",{style:{fontSize:13,color:"#6a7098"}},"Hull "+saved.hole+" av "+saved.hc+" · "+(saved.gid?GAMES[saved.gid]?.label:"Ingen spill"))
-      ),
-      h("button",{className:"btn btnp",onClick:()=>rfState(saved)},L("continueRound")),
-      !rejoin?h("button",{className:"btn",style:{marginTop:8},onClick:()=>setRejoin(true)},"Start ny / Hent runde med kode"):
-      h("div",{className:"card",style:{marginTop:8}},
-        h("input",{placeholder:"GOLF-1234",value:rcode,onChange:ev=>setRcode(ev.target.value.toUpperCase()),style:{textAlign:"center",letterSpacing:4,marginBottom:8}}),
-        h("div",{style:{display:"flex",gap:8,marginBottom:8}},
-          h("button",{className:"btn btnp",style:{flex:1,marginTop:0},onClick:async()=>{const rd=await lod("room_"+rcode.trim());if(!rd){alert("Fant ikke rommet");return;}rfState({...saved,...rd,scr:"game"});}},"Hent"),
-          h("button",{className:"btn",style:{flex:"0 0 auto",marginTop:0},onClick:()=>{setRejoin(false);setRcode("");}},"Avbryt")
+    return h("div",{style:{position:"relative",minHeight:"100vh",background:"var(--bg)"}},
+      h(PhotoBg,{screenKey:"home"}),
+      h("div",{style:{position:"relative",zIndex:1,minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center",padding:"2rem 20px"}},
+        h("p",{style:{fontSize:56,textAlign:"center",margin:"0 0 8px"}},"⛳"),
+        h("h2",{style:{fontFamily:"'Bebas Neue',Impact,sans-serif",fontSize:56,textAlign:"center",margin:"0 0 1.5rem",color:"#F0F0F0",letterSpacing:"0.02em"}},"Velkommen tilbake!"),
+        h("div",{className:"card ci",style:{marginBottom:12}},
+          h("p",{style:{fontSize:11,fontWeight:800,color:"var(--blue)",margin:"0 0 4px",letterSpacing:"0.12em",textTransform:"uppercase"}},"LAGRET RUNDE — "+(ago<60?ago+" min siden":Math.round(ago/60)+" timer siden")),
+          h("p",{style:{fontSize:15,fontWeight:700,margin:"0 0 4px",color:"#fff"}},saved.players?.map(p=>p.name?.split(" ")[0]).join(", ")||""),
+          h("p",{style:{fontSize:12,color:"var(--muted)",margin:0}},"Hull "+(saved.hole||1)+" av "+(saved.hc||18)+" · "+(saved.gid?Object.values({wolf:"Wolf",nassau:"Nassau",skins:"Skins",rabbit:"Rabbit",nines:"Nines",high_low:"High-Low",banker:"Banker",bingo:"Bingo Bango Bongo",joker:"Joker Golf",rule_change:"Rule Change",sixes:"Sixes",scramble:"Scramble"})[Object.keys({wolf:"Wolf",nassau:"Nassau",skins:"Skins",rabbit:"Rabbit",nines:"Nines",high_low:"High-Low",banker:"Banker",bingo:"Bingo Bango Bongo",joker:"Joker Golf",rule_change:"Rule Change",sixes:"Sixes",scramble:"Scramble"}).indexOf(saved.gid)]||saved.gid:"Fri runde"))
         ),
-        h("button",{style:{width:"100%",padding:"8px",fontSize:12,border:"none",background:"none",color:"#ff5c5c",cursor:"pointer"},onClick:async()=>{await del_(SK);setSaved(null);setRejoin(false);setSc("home");}},"Start faktisk ny runde")
+        h("button",{className:"btn btnp",style:{marginBottom:12},onClick:()=>{
+          setIsHost(true);
+          rfState({...saved,scr:"game"});
+        }},"▶ Fortsett runde"),
+        h("button",{onClick:()=>{del_(SK);setSaved(null);setIsHost(true);setSc("setup");},
+          style:{background:"none",border:"none",color:"var(--muted)",fontSize:13,cursor:"pointer",textAlign:"center",width:"100%",padding:"8px"}
+        },"Start ny / Hent runde med kode")
       )
     );
   }
 
-  if(scr==="addplayer")return h("div",{style:{padding:"1rem 0"}},
+  if(scr==="addplayer")return h("div",{style:{position:"relative",minHeight:"100vh",background:"var(--bg)",padding:"1rem 0"}},
+    h(PhotoBg,{screenKey:"spillere"}),
+    h("div",{style:{position:"relative",zIndex:1,padding:"64px 20px 80px"}},
     h("button",{className:"btnback",onClick:()=>{setIp(null);setIb(null);setAiR(null);setPd({name:"",hcp:"18",weight:"80",height:"178",gender:"mann"});setIsHost(true);setSc("setup");}},L("cancelBack")),
     h("h2",{style:{fontSize:18,fontWeight:800,margin:"0 0 4px"}},"Legg til spiller"),
     h("p",{style:{fontSize:13,color:"#6a7098",margin:"0 0 16px"}},"Last opp bilde → AI lager morsomt kallenavn fra utseendet! 🤖"),
@@ -1264,6 +1405,7 @@ rfState({...rd,players:allPlayers,scr:"game"});}},"Bli med")
       setIp(null);setIb(null);setAiR(null);setPd({name:"",hcp:"18",weight:"80",height:"178",gender:"mann"});
       setIsHost(true);setSc("setup");
     }},pd.name.trim()?L("addBtn"):"Skriv inn navn")
+    )
   );
 
   // ── SETUP ────────────────────────────────────────────────────────────────
@@ -1945,7 +2087,7 @@ Svar KUN med JSON:
                   const nr=available.length>0?available[Math.floor(Math.random()*available.length)]:pool[Math.floor(Math.random()*pool.length)];
                   setRcOverrides(prev=>({...prev,[hole]:nr}));
                   setRcRerolls(prev=>({...prev,[hole]:[]}));
-                  setRcCustomInput("");
+                  
                 },
                 style:{padding:"7px 12px",fontSize:11,fontWeight:700,borderRadius:8,cursor:"pointer",
                   border:"1.5px solid rgba(201,84,68,0.5)",
@@ -1989,7 +2131,7 @@ Svar KUN med JSON:
                   const nr=available.length>0?available[Math.floor(Math.random()*available.length)]:pool[Math.floor(Math.random()*pool.length)];
                   setRcOverrides(prev=>({...prev,[hole]:nr}));
                   setRcRerolls(prev=>({...prev,[hole]:[]}));
-                  setRcCustomInput("");
+                  
                 },
                 style:{width:"100%",padding:"9px",borderRadius:8,border:"1.5px solid rgba(201,84,68,0.4)",
                   background:"rgba(201,84,68,0.08)",color:"var(--red)",fontWeight:800,
@@ -1998,26 +2140,26 @@ Svar KUN med JSON:
               h("p",{style:{fontSize:11,color:"var(--muted)",textAlign:"center",marginBottom:6}},"— eller skriv din egen —"),
               h("div",{style:{display:"flex",gap:6}},
                 h("input",{
-                  value:rcCustomInput,
-                  onChange:ev=>setRcCustomInput(ev.target.value),
+                  ref:rcInputRef,
+                  type:"text",
+                  defaultValue:"",
                   placeholder:"Eks: Alle putter med hatten...",
+                  autoComplete:"off",
                   style:{flex:1,fontSize:12,padding:"9px 10px",borderRadius:8,
                     border:"1.5px solid rgba(201,84,68,0.35)",background:"var(--bg2)",
-                    color:"var(--text)",fontFamily:"Inter,sans-serif"}
+                    color:"var(--text)",fontFamily:"Inter,sans-serif",outline:"none"}
                 }),
                 h("button",{
                   onClick:()=>{
-                    const rule=rcCustomInput.trim();
+                    const rule=(rcInputRef.current?.value||"").trim();
                     if(!rule)return;
                     setRcOverrides(prev=>({...prev,[hole]:rule}));
                     setRcRerolls(prev=>({...prev,[hole]:[]}));
-                    setRcCustomInput("");
+                    if(rcInputRef.current)rcInputRef.current.value="";
                   },
-                  disabled:!rcCustomInput.trim(),
                   style:{padding:"9px 14px",borderRadius:8,border:"1.5px solid rgba(201,84,68,0.4)",
-                    background:rcCustomInput.trim()?"rgba(201,84,68,0.15)":"var(--bg3)",
-                    color:rcCustomInput.trim()?"var(--red)":"var(--muted)",
-                    fontWeight:800,fontSize:14,cursor:rcCustomInput.trim()?"pointer":"default"}
+                    background:"rgba(201,84,68,0.15)",color:"var(--red)",
+                    fontWeight:800,fontSize:14,cursor:"pointer"}
                 },"✓")
               )
             )
@@ -2333,8 +2475,9 @@ Svar KUN med JSON:
       if(gid==="joker"){
         // Give each player 3 joker cards if not done
         const JCARDS=["replay","double","shield","bomb"];
-        const myCards=jokerCards[players[0]?.id];
-        if(!myCards&&players.length>0){
+        // Init kun naar ingen spillere har faatt kort enno (unngaa reset naar kort spilles opp)
+        const anyInitialized=players.some(p=>jokerCards[p.id]!==undefined);
+        if(!anyInitialized&&players.length>0){
           const init={};
           players.forEach(p=>{init[p.id]=["replay","double","shield"];});
           setJokerCards(init);
