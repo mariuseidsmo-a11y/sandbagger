@@ -516,14 +516,8 @@ function sfP(score,par,strokes){const net=score-strokes,d=net-par;if(d<=-2)retur
 // L is set dynamically after lang state is available (see in App)
 
 async function callAI(msgs,max,key){
-  // Use user's own API key from localStorage (SECURITY: never hardcode keys in client code)
-  const k=key||localStorage.getItem("golf_apikey")||"";
-  if(!k||!k.startsWith("sk-ant-")){
-    console.warn("No valid API key found. User must add their own.");
-    return"{}";
-  }
   try{
-    const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":k,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:max||500,messages:msgs})});
+    const res=await fetch("https://sandbagger-ai.mariuseidsmo.workers.dev/",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:max||500,messages:msgs})});
     const d=await res.json();
     return d.content?.find(c=>c.type==="text")?.text||"{}";
   }catch(e){console.error(e);return"{}";}
