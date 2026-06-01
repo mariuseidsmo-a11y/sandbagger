@@ -510,14 +510,14 @@ function bacX(bac){if(bac<0.2)return 0;if(bac<0.5)return 1;if(bac<0.8)return 2;i
 function bacL(b){if(b===0)return"Edru";if(b<0.3)return"Oppvarming";if(b<0.6)return"I god form";if(b<0.9)return"Autopilot 🤙";if(b<1.2)return"Vibe-sjekk ⚠️";return"19. hull nok 🚨";}
 function dPen(drinks){return(drinks||[]).reduce((s,d)=>s+d.units,0);}
 function hcpH(hcp,idx,tot){return Math.floor(hcp/tot)+(idx<(Math.round(hcp)%tot)?1:0);}
-function sfP(score,par,strokes){const net=score-strokes,d=net-par;if(d<=-2)return 4;if(d===-1)return 3;if(d===0)return 2;if(d===1)return 1;return 0;}
+function sfP(score,par,strokes){return Math.max(0,2-((score-strokes)-par));}
 
 // Translation helper — used throughout app
 // L is set dynamically after lang state is available (see in App)
 
 async function callAI(msgs,max,key){
   try{
-    const res=await fetch("https://sandbagger-ai.mariuseidsmo.workers.dev/",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:max||500,messages:msgs})});
+    const res=await fetch("https://sandbagger-ai.mariuseidsmo.workers.dev/",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-5",max_tokens:max||500,messages:msgs})});
     const d=await res.json();
     return d.content?.find(c=>c.type==="text")?.text||"{}";
   }catch(e){console.error(e);return"{}";}
@@ -840,6 +840,7 @@ function App(){
   const [beer,setBeer]=useState(false);
   const [hc,setHc]=useState(18);
   const [hp,setHp]=useState({});
+  const [hi,setHi]=useState({});
   const [rc,setRc]=useState("");
   const [snake,setSnake]=useState(false);
   const [hole,setHole]=useState(1);
@@ -855,6 +856,8 @@ function App(){
   const rcInputRef=React.useRef(null);
   const [rcRerolls,setRcRerolls]=useState({}); // {hole: [pid,...]} who voted for reroll
   const [rcOverrides,setRcOverrides]=useState({});
+  const [rcAiPool,setRcAiPool]=useState([]);
+  const [rcAiLoading,setRcAiLoading]=useState(false);
   const [wolfIdx,setWolfIdx]=useState(0);
   const [wolfPar,setWolfPar]=useState(null);
   const [wolfLone,setWolfLone]=useState(false);
@@ -907,7 +910,7 @@ function App(){
 
   useEffect(()=>{
     if(scr!=="game"&&scr!=="setup")return;
-    const state={scr,step,players,gid,hmode,abon,apen,money,uval,beer,hc,hp,hole,scores,hd,sh,drks,rc,snake,wolfIdx,wolfPar,wolfLone,wolfHoles,bankerIdx,rcDifficulty,sixesTeams,bingoClaims,jokerCards,courseName,courseSlope,courseCR,playerTees,savedAt:Date.now()};
+    const state={scr,step,players,gid,hmode,abon,apen,money,uval,beer,hc,hp,hi,hole,scores,hd,sh,drks,rc,snake,wolfIdx,wolfPar,wolfLone,wolfHoles,bankerIdx,rcDifficulty,sixesTeams,bingoClaims,jokerCards,courseName,courseSlope,courseCR,playerTees,savedAt:Date.now()};
     sto(SK,state);
     // If host: broadcast to room
     if(isHost&&rc&&scr==="game"){
@@ -943,7 +946,7 @@ function App(){
   function rfState(s){
     setPlayers(s.players||[]);setGid(s.gid||null);setHmode(s.hmode||"stableford");
     setAbon(s.abon||{});setApen(s.apen||{});setMoney(s.money||false);setUval(s.uval||20);
-    setBeer(s.beer||false);setHc(s.hc||18);setHp(s.hp||{});setHole(s.hole||1);
+    setBeer(s.beer||false);setHc(s.hc||18);setHp(s.hp||{});setHi(s.hi||{});setHole(s.hole||1);
     setScores(s.scores||{});setHd(s.hd||{});setSh(s.sh||null);setDrks(s.drks||{});
     setRc(s.rc||"");setSnake(s.snake||false);setWolfIdx(s.wolfIdx||0);
     setWolfPar(s.wolfPar||null);setWolfLone(s.wolfLone||false);
@@ -1062,7 +1065,7 @@ Svar KUN med JSON (ingen markdown):
   function sfFor(p,h_){
     const s=scores[p.id]?.[h_];if(s==null)return null;
     const par=hp[String(h_)]||HOLE_PARS[h_]||4;
-    const strokes=hcpH(Math.round(effHcp(p)),h_-1,hc);
+    const strokes=hcpH(Math.round(effHcp(p)),(hi[String(h_)]?hi[String(h_)]-1:h_-1),hc);
     return sfP(s,par,strokes);
   }
   function sfTot(p){let t=0;for(let h_=1;h_<=hc;h_++){const pts=sfFor(p,h_);if(pts!=null)t+=pts;}return t;}
@@ -1074,6 +1077,29 @@ Svar KUN med JSON (ingen markdown):
   function addDrink(pid,units){setDrks(d=>({...d,[pid]:[...(d[pid]||[]),{units,time:Date.now()}]}));}
   function recEv(pid,eid,isB){const key=hole+"-"+pid+"-"+eid;setHd(d=>{if(d[key]){const n={...d};delete n[key];return n;}return{...d,[key]:{pid,eid,isB,hole,value:isB?uval:-uval}};});if(eid==="three_putt")setSh(pid);}
   function hasEv(pid,eid){return!!(hd[hole+"-"+pid+"-"+eid]);}
+  // AI-generert Rule Change-regel — ferske, originale regler tilpasset vanskelighetsgrad
+  function setNewRule(nr){setRcOverrides(prev=>({...prev,[hole]:nr}));setRcRerolls(prev=>({...prev,[hole]:[]}));}
+  function fallbackRule(used){const stat=(RULE_CHANGE_ALL[rcDifficulty]||RULE_CHANGE).filter(r=>!used.has(r));return stat.length?stat[Math.floor(Math.random()*stat.length)]:(RULE_CHANGE[Math.floor(Math.random()*RULE_CHANGE.length)]||"Fri regel!");}
+  async function pullAiRule(){
+    if(rcAiLoading)return;
+    const used=new Set(Object.values(rcOverrides).concat(rcRules.slice(0,hole)));
+    let fresh=rcAiPool.filter(r=>!used.has(r));
+    if(fresh.length>0){const nr=fresh[0];setRcAiPool(fresh.slice(1));setNewRule(nr);return;}
+    setRcAiLoading(true);
+    try{
+      const lvl=RC_LEVELS[rcDifficulty]||RC_LEVELS.mix;
+      const ex=(RULE_CHANGE_ALL[rcDifficulty]||RULE_CHANGE).slice(0,5);
+      const usedList=Array.from(used).slice(-40);
+      const prompt=`Du lager nye, originale "Rule Change"-regler til en norsk golf-app for kompiser som ikke tar seg selv for seriøst.\n\nVANSKELIGHETSGRAD: ${lvl.label} — ${lvl.desc}\n\nEn regel er en absurd/morsom tilleggsregel som gjelder for ETT golfhull og alle spillerne.\n\nSTIL (lag NYE i samme ånd, IKKE gjenbruk disse): ${ex.map(e=>'"'+e+'"').join(", ")}\n\nALDRI gjenta disse allerede brukte reglene: ${usedList.map(e=>'"'+e+'"').join(", ")||"(ingen ennå)"}\n\nKRAV: norsk, kort (maks 9 ord), konkret, fysisk gjennomførbar på en ekte golfbane, og match vanskelighetsgraden over. Vær kreativ og variert — ikke bare småvarianter av eksemplene.\n\nSvar KUN med en JSON-array med 8 strenger. Ingen markdown, ingen forklaring. Eksempel-format: ["regel én","regel to"]`;
+      const txt=await callAI([{role:"user",content:prompt}],600);
+      let arr=[];try{const m=txt.match(/\[[\s\S]*\]/);if(m)arr=JSON.parse(m[0]);}catch(e){}
+      arr=(Array.isArray(arr)?arr:[]).filter(r=>typeof r==="string"&&r.trim().length>2&&!used.has(r.trim())).map(r=>r.trim());
+      setRcAiLoading(false);
+      if(arr.length===0){setNewRule(fallbackRule(used));return;}
+      setRcAiPool(arr.slice(1));
+      setNewRule(arr[0]);
+    }catch(e){setRcAiLoading(false);setNewRule(fallbackRule(used));}
+  }
   // Delt Wolf-beregning — brukes BAADE i game-skjerm og i summary (fikser bug der Wolf-penger forsvant)
   function wolfT(){
     const ws={};players.forEach(p=>ws[p.id]=0);
@@ -1265,8 +1291,8 @@ Svar KUN med JSON (ingen markdown):
         const code="SAND-"+Math.floor(1000+Math.random()*9000);setRc(code);setIsHost(true);
         setScores({});setHd({});setHole(1);setDrks({});setSh(null);
         setWolfIdx(0);setWolfPar(null);setWolfLone(false);setWolfHoles({});setIsHost(true);setSc("setup");
-      }},h("p",{style:{margin:"0 0 4px",fontWeight:700,fontSize:15}},L("startRound")),h("p",{style:{margin:0,fontSize:13,color:"#8890b8"}},L("startRoundDesc"))),
-      h("button",{className:"card cs",style:{textAlign:"left",cursor:"pointer"},onClick:()=>setSc("joinroom")},h("p",{style:{margin:"0 0 4px",fontWeight:700,fontSize:15}},L("joinRound")),h("p",{style:{margin:0,fontSize:13,color:"#8890b8"}},L("joinRoundDesc")))
+      }},h("p",{style:{margin:"0 0 4px",fontWeight:800,fontSize:16,color:"var(--text)"}},L("startRound")),h("p",{style:{margin:0,fontSize:13,color:"#aeb6d4"}},L("startRoundDesc"))),
+      h("button",{className:"card cs",style:{textAlign:"left",cursor:"pointer"},onClick:()=>setSc("joinroom")},h("p",{style:{margin:"0 0 4px",fontWeight:800,fontSize:16,color:"var(--accent)"}},L("joinRound")),h("p",{style:{margin:0,fontSize:13,color:"#c4bca8"}},L("joinRoundDesc")))
     )
   )
   );
@@ -1640,25 +1666,6 @@ rfState({...rd,players:allPlayers,scr:"game"});}},"Bli med")
         h("h2",{style:{fontSize:18,fontWeight:800,margin:"0 0 4px"}},"Scorekort & Baneinformasjon"),
         h("p",{style:{fontSize:13,color:"#6a7098",margin:"0 0 12px"}},"Skann banekortet med AI eller fyll inn manuelt"),
 
-        // AI SCANNER
-        h("div",{className:"card cs",style:{marginBottom:12}},
-          h("p",{style:{fontSize:11,fontWeight:800,letterSpacing:"0.12em",color:"var(--accent)",margin:"0 0 6px",textTransform:"uppercase"}},"📱 Sikkerhetskopi av profil"),
-          h("p",{style:{fontSize:12,color:"var(--muted)",marginBottom:10,lineHeight:1.5}},"Last ned ny versjon av appen? Kopier koden nedenfor og lim den inn for å gjenopprette profilen din."),
-          prof&&h("div",null,
-            h("button",{
-              onClick:()=>{
-                const code=profileToCode(prof);
-                if(code){
-                  navigator.clipboard?.writeText(code)
-                    .then(()=>alert("✅ Profilkode kopiert!\n\nLim inn koden neste gang du starter appen."))
-                    .catch(()=>alert("Din kode:\n\n"+code.slice(0,40)+"...\n\n(For lang for varsling — gå til instillinger)"));
-                }
-              },
-              className:"btn btnp",style:{marginBottom:8,fontSize:14}
-            },"📋 Kopier profilkode"),
-            h("p",{style:{fontSize:11,color:"var(--muted)",textAlign:"center"}},"Profilen er alltid lagret lokalt på enheten")
-          )
-        ),
         h("div",{className:"card cs",style:{marginBottom:12}},
           h("p",{style:{fontSize:13,fontWeight:800,color:"var(--accent)",marginBottom:6,letterSpacing:"0.08em",textTransform:"uppercase"}},"📷 Skann banekort med AI"),
           h("p",{style:{fontSize:12,color:"#6a7098",marginBottom:12}},"Ta bilde av banekortet — AI leser slope, CR, par og handicapindeks automatisk"),
@@ -1694,8 +1701,8 @@ Svar KUN med JSON:
                 setCourseName(res.courseName||"");
                 setCourseSlope(res.tees?.[0]?.slope?String(res.tees[0].slope):"");
                 setCourseCR(res.tees?.[0]?.cr?String(res.tees[0].cr):"");
-                const newHp={};res.holes.forEach(hl=>{if(hl.par)newHp[String(hl.hole)]=hl.par;});
-                setHp(newHp);setHc(res.totalHoles>=18?18:9);
+                const newHp={},newHi={};res.holes.forEach(hl=>{if(hl.par)newHp[String(hl.hole)]=hl.par;if(hl.index)newHi[String(hl.hole)]=hl.index;});
+                setHp(newHp);setHi(newHi);setHc(res.totalHoles>=18?18:9);
               }else{alert("Klarte ikke lese — prøv tydeligere bilde");}
             }catch(e){alert("Feil: "+e.message);}
             setScanLoading(false);
@@ -1766,6 +1773,33 @@ Svar KUN med JSON:
                 h("button",{onClick:()=>setHp(x=>({...x,[String(hNum)]:Math.max(3,(x[String(hNum)]||HOLE_PARS[hNum]||4)-1)})),style:{width:"100%",padding:"3px 0",fontSize:11,borderRadius:"6px 6px 0 0",border:"1.5px solid var(--border2)",background:"var(--bg3)",color:"var(--text2)",cursor:"pointer",fontWeight:700}},"−"),
                 h("div",{style:{padding:"6px 0",fontSize:18,fontWeight:900,background:"var(--bg2)",color:"var(--text)",border:"1.5px solid var(--border2)",borderTop:"none",borderBottom:"none"}},par),
                 h("button",{onClick:()=>setHp(x=>({...x,[String(hNum)]:Math.min(6,(x[String(hNum)]||HOLE_PARS[hNum]||4)+1)})),style:{width:"100%",padding:"3px 0",fontSize:11,borderRadius:"0 0 6px 6px",border:"1.5px solid var(--border2)",background:"var(--bg3)",color:"var(--text2)",cursor:"pointer",fontWeight:700}},"+")
+              );
+            })
+          )
+        ),
+        // INDEKS PER HULL — +/- buttons
+        h("div",{className:"card",style:{marginTop:12}},
+          h("p",{style:{fontSize:13,fontWeight:800,marginBottom:4}},"Handicap-indeks per hull"),
+          h("p",{style:{fontSize:11,color:"var(--muted)",marginBottom:10}},"1 = vanskeligst, "+hc+" = lettest. Bestemmer hvilke hull du får slag på. Fylles automatisk ved skann."),
+          h("div",{style:{display:"grid",gridTemplateColumns:"repeat(9,1fr)",gap:6,marginBottom:hc>9?10:0}},
+            Array.from({length:Math.min(9,hc)},(_,i)=>{
+              const hNum=i+1,idx=hi[String(hNum)]||hNum;
+              return h("div",{key:hNum,style:{textAlign:"center"}},
+                h("p",{style:{margin:"0 0 3px",fontSize:10,fontWeight:700,color:"#404468"}},"H"+hNum),
+                h("button",{onClick:()=>setHi(x=>({...x,[String(hNum)]:Math.max(1,(x[String(hNum)]||hNum)-1)})),style:{width:"100%",padding:"3px 0",fontSize:11,borderRadius:"6px 6px 0 0",border:"1.5px solid var(--border2)",background:"var(--bg3)",color:"var(--text2)",cursor:"pointer",fontWeight:700}},"−"),
+                h("div",{style:{padding:"6px 0",fontSize:18,fontWeight:900,background:"var(--bg2)",color:"var(--accent)",border:"1.5px solid var(--border2)",borderTop:"none",borderBottom:"none"}},idx),
+                h("button",{onClick:()=>setHi(x=>({...x,[String(hNum)]:Math.min(hc,(x[String(hNum)]||hNum)+1)})),style:{width:"100%",padding:"3px 0",fontSize:11,borderRadius:"0 0 6px 6px",border:"1.5px solid var(--border2)",background:"var(--bg3)",color:"var(--text2)",cursor:"pointer",fontWeight:700}},"+")
+              );
+            })
+          ),
+          hc>9&&h("div",{style:{display:"grid",gridTemplateColumns:"repeat(9,1fr)",gap:6}},
+            Array.from({length:hc-9},(_,i)=>{
+              const hNum=i+10,idx=hi[String(hNum)]||hNum;
+              return h("div",{key:hNum,style:{textAlign:"center"}},
+                h("p",{style:{margin:"0 0 3px",fontSize:10,fontWeight:700,color:"#404468"}},"H"+hNum),
+                h("button",{onClick:()=>setHi(x=>({...x,[String(hNum)]:Math.max(1,(x[String(hNum)]||hNum)-1)})),style:{width:"100%",padding:"3px 0",fontSize:11,borderRadius:"6px 6px 0 0",border:"1.5px solid var(--border2)",background:"var(--bg3)",color:"var(--text2)",cursor:"pointer",fontWeight:700}},"−"),
+                h("div",{style:{padding:"6px 0",fontSize:18,fontWeight:900,background:"var(--bg2)",color:"var(--accent)",border:"1.5px solid var(--border2)",borderTop:"none",borderBottom:"none"}},idx),
+                h("button",{onClick:()=>setHi(x=>({...x,[String(hNum)]:Math.min(hc,(x[String(hNum)]||hNum)+1)})),style:{width:"100%",padding:"3px 0",fontSize:11,borderRadius:"0 0 6px 6px",border:"1.5px solid var(--border2)",background:"var(--bg3)",color:"var(--text2)",cursor:"pointer",fontWeight:700}},"+")
               );
             })
           )
@@ -2088,6 +2122,13 @@ Svar KUN med JSON:
                   background:"rgba(201,84,68,0.08)",color:"var(--red)"}
               },"🔄 Bytt regel"),
               h("button",{
+                onClick:pullAiRule,
+                disabled:rcAiLoading,
+                style:{padding:"7px 12px",fontSize:11,fontWeight:700,borderRadius:8,cursor:rcAiLoading?"default":"pointer",
+                  border:"1.5px solid rgba(201,84,68,0.6)",
+                  background:rcAiLoading?"var(--bg3)":"rgba(201,84,68,0.15)",color:"var(--red)"}
+              },rcAiLoading?"🤖 Lager regel...":"🤖 Ny AI-regel"),
+              h("button",{
                 onClick:()=>{
                   // Show custom input by marking allVoted
                   setRcRerolls(prev=>({...prev,[hole]:players.map(p=>p.id)}));
@@ -2131,6 +2172,13 @@ Svar KUN med JSON:
                   background:"rgba(201,84,68,0.08)",color:"var(--red)",fontWeight:800,
                   fontSize:12,cursor:"pointer",marginBottom:8}
               },"🎲 Trekk tilfeldig ny regel"),
+              h("button",{
+                onClick:pullAiRule,
+                disabled:rcAiLoading,
+                style:{width:"100%",padding:"9px",borderRadius:8,border:"1.5px solid rgba(201,84,68,0.6)",
+                  background:rcAiLoading?"var(--bg3)":"rgba(201,84,68,0.15)",color:"var(--red)",fontWeight:800,
+                  fontSize:12,cursor:rcAiLoading?"default":"pointer",marginBottom:8}
+              },rcAiLoading?"🤖 Lager fersk regel...":"🤖 Generer fersk AI-regel"),
               h("p",{style:{fontSize:11,color:"var(--muted)",textAlign:"center",marginBottom:6}},"— eller skriv din egen —"),
               h("div",{style:{display:"flex",gap:6}},
                 h("input",{
@@ -2722,7 +2770,7 @@ Svar KUN med JSON:
         players.map(p=>{
           const s=scores[p.id]?.[hole];
           const eHcp=effHcp(p);
-          const strokes=hcpH(Math.round(eHcp),hole-1,hc);
+          const strokes=hcpH(Math.round(eHcp),(hi[String(hole)]?hi[String(hole)]-1:hole-1),hc);
           const pts=isSF&&s!=null?sfFor(p,hole):null;
           const bacVal=bacOf(p);
           const isWin=hWin&&hWin.id===p.id;
