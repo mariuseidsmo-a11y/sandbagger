@@ -968,7 +968,9 @@ function App(){
   }
 
   async function runAI(){
-    if(!ib){setAiR(randomNick(pd.name));return;}
+    const b64=ib||(ip&&ip.indexOf(",")>-1?ip.split(",")[1]:null);
+    const mime=im||(ip&&ip.indexOf("data:")===0&&ip.indexOf(";")>-1?ip.substring(5,ip.indexOf(";")):"image/jpeg");
+    if(!b64){setAiR(randomNick(pd.name));return;}
     setAnl(true);
     try{
       const prompt=`Du er Sandbagger-roasteren — en hardtslående norsk golfkommentator som lager BRUTALT MORSOMME kallenavn til golfere basert på hvordan de SER UT på bildet.
@@ -1014,7 +1016,7 @@ PÅKREVD: Navnet MÅ være spesifikt for DETTE bildet. Reason-feltet skal forkla
 Svar KUN med JSON (ingen markdown):
 {"nickname":"Mojito-Mons Hull19sen","reason":"Holder en grønn drink, party-vibe, ser ut som han trives bedre på klubbhuset enn på banen","age":32,"height":182,"weight":88,"gender":"mann"}`;
       const txt=await callAI([{role:"user",content:[
-        {type:"image",source:{type:"base64",media_type:im||"image/jpeg",data:ib}},
+        {type:"image",source:{type:"base64",media_type:mime,data:b64}},
         {type:"text",text:prompt}
       ]}]);
       const m=txt.match(/\{[\s\S]*?\}/);
@@ -1311,19 +1313,6 @@ Svar KUN med JSON (ingen markdown):
         h("p",{style:{margin:0,fontSize:12,color:"#5a6080"}},"HCP "+prof.hcp+" · "+prof.weight+"kg · "+prof.height+"cm")
       )
     ),
-    // API KEY
-    h("div",{className:"card"},
-      h("p",{style:{fontSize:11,fontWeight:800,letterSpacing:"0.12em",color:"var(--text3)",marginBottom:10,textTransform:"uppercase"}},L("apiKeyTitle")),
-      h("p",{style:{fontSize:12,color:"var(--text2)",marginBottom:10}},L("apiKeyDesc")),
-      apiKey?h("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:8}},
-        h("p",{style:{fontSize:13,color:"var(--accent)",fontWeight:700,flex:1}},"✓ API-nøkkel lagret"),
-        h("button",{className:"bsm",onClick:()=>{setApiKey("");localStorage.removeItem("golf_apikey");}},"Fjern")
-      ):h("div",null,
-        h("input",{type:"password",value:apiKeyDraft,onChange:e=>setApiKeyDraft(e.target.value),placeholder:L("apiKeyPlaceholder"),style:{marginBottom:8}}),
-        h("button",{className:"btn btnp",style:{marginTop:0},onClick:()=>{if(apiKeyDraft.startsWith("sk-")){localStorage.setItem("golf_apikey",apiKeyDraft);setApiKey(apiKeyDraft);setApiKeyDraft("");}else alert("Ugyldig nøkkel — må starte med sk-ant-...");}},L("apiKeySave"))
-      )
-    ),
-
     // LANGUAGE
     h("div",{className:"card"},
       h("p",{style:{fontSize:11,fontWeight:800,letterSpacing:"0.12em",color:"var(--text3)",marginBottom:10,textTransform:"uppercase"}},L("chooseLanguage")),
