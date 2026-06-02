@@ -2916,7 +2916,9 @@ Svar KUN med JSON:
         ))
       ),
 
-      h("button",{onClick:()=>setSc("summary"),style:{width:"100%",padding:"20px",fontSize:19,fontWeight:900,borderRadius:12,border:"none",background:"var(--accent)",color:"var(--accent-text)",marginTop:8,cursor:"pointer",letterSpacing:"0.02em"}},L("endRound"))
+      hole<hc&&h("button",{onClick:()=>{setHole(x=>Math.min(hc,x+1));setSset(false);setShowPar(false);setShowGI(false);window.scrollTo(0,0);},style:{width:"100%",padding:"20px",fontSize:19,fontWeight:900,borderRadius:12,border:"none",background:"var(--accent)",color:"var(--accent-text)",marginTop:8,cursor:"pointer",letterSpacing:"0.02em"}},(lang==="en"?"Next hole →":"Neste hull →")),
+      hole>=hc&&h("button",{onClick:()=>{if(window.confirm(lang==="en"?"Finish the round and see the summary?":"Avslutte runden og se oppsummeringen?"))setSc("summary");},style:{width:"100%",padding:"20px",fontSize:19,fontWeight:900,borderRadius:12,border:"none",background:"var(--accent)",color:"var(--accent-text)",marginTop:8,cursor:"pointer",letterSpacing:"0.02em"}},(lang==="en"?"See summary →":"Se oppsummering →")),
+      h("button",{onClick:()=>{if(window.confirm(lang==="en"?"Are you sure you want to end the round? You can still see the summary afterwards.":"Er du sikker på at du vil avslutte runden? Du ser oppsummeringen etterpå."))setSc("summary");},style:{width:"100%",padding:"12px",fontSize:13,fontWeight:600,borderRadius:10,border:"none",background:"none",color:"#5a6080",marginTop:14,cursor:"pointer"}},(lang==="en"?"End round early":"Avslutt runde"))
       )
     );
   }
