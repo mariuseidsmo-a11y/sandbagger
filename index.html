@@ -259,7 +259,18 @@ button{cursor:pointer;font-family:'Inter',sans-serif;}
 <div id="root"><p style="padding:4rem 2rem;text-align:center;color:#5a6080;font-size:16px;font-family:Inter,sans-serif;background:#0f1117;min-height:100vh;margin:0;">⛳ Laster...</p></div>
 <script>
 const {useState,useEffect}=React;
-const h=React.createElement;
+const _hCreate=React.createElement;
+let CURLANG="no";
+const EN={"💡 Tre kamper: Fremre 9, Bakre 9, Totalt 18. Du kan vinne 0-3 av dem!":"💡 Three matches: Front 9, Back 9, Total 18. You can win 0-3 of them!","💡 Banker vs alle. Vinner du = bankeren betaler. Taper du = du betaler bankeren.":"💡 Banker vs everyone. You win = banker pays. You lose = you pay the banker.","⚠️ Øl-modus krever 18+":"⚠️ Beer mode requires 18+","💰 Pengeopgjør":"💰 Money settlement","3 veddemål: Fremre 9, Bakre 9 og Totalt. Flest hull vunnet i perioden vinner.":"3 bets: Front 9, Back 9 and Total. Most holes won in the period wins.","⬆️⬇️ HIGH-LOW":"⬆️⬇️ HIGH-LOW","ØL-TRACKER 🍺":"BEER TRACKER 🍺","Widmark-formelen beregner gjenværende promille fra FØR runden.":"The Widmark formula estimates remaining BAC from before the round.","Under 18":"Under 18","Legg til for øl-modus":"Add for beer mode","Golf for dei som ikke tar seg sjølv for seriøst":"Golf for those who dont take themselves too seriously","SAND":"SAND","BAGGER":"BAGGER","Har du spilt før? Gjenopprett profil":"Played before? Restore profile","SANDBAGGER":"SANDBAGGER","Norsk alkohollov krever aldersbekreftelse":"Norwegian alcohol law requires age verification","Er du over 18 år?":"Are you over 18?","FØDSELSDATO":"DATE OF BIRTH","✅ Bekreft og fortsett":"✅ Confirm and continue","⛳ SANDBAGGER":"⛳ SANDBAGGER","Din profil":"Your profile","Bli med i runde":"Join round","Bli med":"Join","Velkommen tilbake!":"Welcome back!","▶ Fortsett runde":"▶ Continue round","Start ny / Hent runde med kode":"Start new / Fetch round with code","Legg til spiller":"Add player","ROM-KODE":"ROOM CODE","✕ Fjern":"✕ Remove","Spill & HCP-modus":"Game & HCP mode","Velg spill og scoring":"Choose game and scoring","Velg spill":"Choose game","Handicap-modus":"Handicap mode","Bonuser, Straffer & Penger":"Bonuses, Penalties & Money","Bonuser":"Bonuses","Straffer":"Penalties","🐍 Slangen":"🐍 The Snake","Sist til å 3-putte betaler på slutten":"Last to 3-putt pays at the end","💰 Pengespill":"💰 Money game","Kr per hendelse/poeng":"Kr per event/point","Kr per poeng/hendelse":"Kr per point/event","Øl-modus 🍺":"Beer mode 🍺","Øl-modus":"Beer mode","Sporer promille og gir ekstra HCP til gode":"Tracks BAC and gives extra HCP to the good players","🍺 Slik funker øl-HCP:":"🍺 How beer HCP works:","Gå til Min Side og registrer fødselsdato for å låse opp.":"Go to My Page and set your date of birth to unlock.","⏰ Drukket noe FØR runden?":"⏰ Had anything to drink BEFORE the round?","Antall enheter":"Number of units","Minutter siden":"Minutes ago","Scorekort & Baneinformasjon":"Scorecard & Course info","Skann banekortet med AI eller fyll inn manuelt":"Scan the course card with AI or fill in manually","📷 Skann banekort med AI":"📷 Scan course card with AI","🤖 Analyser scorekort med AI":"🤖 Analyze scorecard with AI","🤖 AI leser scorekortet...":"🤖 AI is reading the scorecard...","✅ ":"✅ AI is reading the scorecard✅ ","⛳ Tee-boks per spiller":"⛳ Tee box per player","📋 Baneinformasjon":"📋 Course info","Banens navn":"Course name","Course Rating":"Course Rating","Slope":"Slope","Antall hull":"Number of holes","Par per hull":"Par per hole","Handicap-indeks per hull":"Handicap index per hole","Klar! 🏌️":"Ready! 🏌️","⛳ Start runde!":"⛳ Start round!","🏆":"🏆Start round🏆","Runden er ferdig!":"The round is over!","Scorekort":"Scorecard","📊 Rundestatistikk":"📊 Round statistics","Birdies":"Birdies","Pars":"Pars","Over par":"Over par","🍺 Ølrapport":"🍺 Beer report","Topp promille":"Top BAC","Totale enheter":"Total units","STABLEFORD":"STABLEFORD","🏌️ NASSAU":"🏌️ NASSAU","Pågår...":"In progress...","Saldo":"Balance","SKINS 🏆":"SKINS 🏆","🐇 RABBIT":"🐇 RABBIT","🐇":"🐇RABBIT🐇","🐾":"🐾RABBIT🐾","Fremre H1-9":"Front H1-9","Bakre H10-18":"Back H10-18","🃏 Rule Change":"🃏 Rule Change","🔄 Bytt regel":"🔄 Change rule","✏️ Lag egen":"✏️ Write your own","🗳️ Alle enige! Velg:":"🗳️ Everyone agrees! Choose:","🎲 Trekk tilfeldig ny regel":"🎲 Draw a random new rule","🐺 WOLF":"🐺 WOLF","🐺 Wolf velger partner etter drives:":"🐺 Wolf picks a partner after the drives:","Stilling":"Standings"," 🐺":" 🐺Standings 🐺","🎯 NINES":"🎯 NINES","Poengstilling":"Points standings","Høyest slag betaler lavest slag ":"Highest score pays lowest score ","⬆️ Betaler":"⬆️ Pays","⬇️ Mottar":"⬇️ Receives","🎯 BINGO BANGO BONGO":"🎯 BINGO BANGO BONGO","3 poeng per hull":"3 points per hole","🃏 JOKER GOLF":"🃏 JOKER GOLF","Matchplay med jokerkort":"Match play with joker cards","Ingen kort igjen":"No cards left","Matchplay hull vunnet":"Match play holes won","🏦 Banker":"🏦 Banker","💰 Banker saldo":"💰 Banker balance","Lag A":"Team A","Lag B":"Team B","⚙️ Innstillinger":"⚙️ Settings","🍺 Øl-modus":"🍺 Beer mode","🎯":"🎯Beer mode🎯","🤝":"🤝Beer mode🤝","🍺 ":"🍺 Beer mode🍺 ","⏰ Drakk noe FØR runden?":"⏰ Drank anything BEFORE the round?","HENDELSER 🏌️":"EVENTS 🏌️","— ":"— EVENTS— "};
+function tr(s){return (CURLANG==="en"&&typeof s==="string")?(EN[s]||s):s;}
+const h=function(){
+  const a=Array.prototype.slice.call(arguments);
+  if(CURLANG==="en"){
+    if(a[1]&&typeof a[1]==="object"&&typeof a[1].placeholder==="string"){a[1]=Object.assign({},a[1],{placeholder:tr(a[1].placeholder)});}
+    for(let i=2;i<a.length;i++){if(typeof a[i]==="string")a[i]=tr(a[i]);}
+  }
+  return _hCreate.apply(null,a);
+};
 
 // Rule Change — rules by difficulty level
 // easy: fun, barely affects play
@@ -515,9 +526,9 @@ function sfP(score,par,strokes){return Math.max(0,2-((score-strokes)-par));}
 // Translation helper — used throughout app
 // L is set dynamically after lang state is available (see in App)
 
-async function callAI(msgs,max,key){
+async function callAI(msgs,max,model){
   try{
-    const res=await fetch("https://sandbagger-ai.mariuseidsmo.workers.dev/",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-5",max_tokens:max||500,messages:msgs})});
+    const res=await fetch("https://sandbagger-ai.mariuseidsmo.workers.dev/",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:model||"claude-sonnet-4-5",max_tokens:max||500,messages:msgs})});
     const d=await res.json();
     return d.content?.find(c=>c.type==="text")?.text||"{}";
   }catch(e){console.error(e);return"{}";}
@@ -796,8 +807,10 @@ function App(){
   const [saved,setSaved]=useState(null);
   const [prof,setProf]=useState(null);
   const [aged,setAged]=useState(false);
+  const [ageIn,setAgeIn]=useState("");
   const [theme,setTheme]=useState("midnight");
   const [lang,setLang]=useState("no");
+  CURLANG=lang;
   const [apiKey,setApiKey]=useState(()=>localStorage.getItem("golf_apikey")||"");
   const [apiKeyDraft,setApiKeyDraft]=useState("");
   const [showApiKey,setShowApiKey]=useState(false);
@@ -973,13 +986,18 @@ function App(){
     if(!b64){setAiR(randomNick(pd.name));return;}
     setAnl(true);
     try{
-      const prompt=`Du er Sandbagger-roasteren — en hardtslående norsk golfkommentator som lager BRUTALT MORSOMME kallenavn til golfere basert på hvordan de SER UT på bildet.
+      const prompt=(lang==="en"?"CRITICAL: Respond in ENGLISH — the nickname and the reason MUST be written in English (keep it punchy and funny).\n\n":"")+`Du er Sandbagger-roasteren — en hardtslående norsk golfkommentator som lager BRUTALT MORSOMME kallenavn til golfere basert på hvordan de SER UT på bildet.
 
 KRITISK REGEL: Du MÅ analysere det SPESIFIKKE bildet. Generelle/trygge navn er FORBUDT.
 Hvis bildet viser noen som drikker → navnet MÅ referere til drikkingen.
 Hvis bildet viser noen i fest-modus → navnet MÅ referere til festen.
 Hvis bildet viser noen i positur/sving → navnet MÅ referere til posituren.
 Hvis bildet viser klær/caps/tatoveringer → bruk DET som inspirasjon.
+
+BRUTALITETS-SKALA — tilpass tonen etter hvor gammel personen ser ut (du gjetter alderen uansett):
+- Ung (ser under ca. 35 ut): KJØR PÅ. Vær frekk, drøy og skånselsløs — dette tåler de godt.
+- Voksen (ca. 35–50): ganske drøy og ertende, men ikke ondskapsfull.
+- Eldre (ser ca. 55+ ut): vær tydelig snillere og mer kjærlig — godmodig erting og ablegøyer, ALDRI noe som sårer om alder, kropp eller utseende.
 
 OBSERVASJON FØRST (tenk i hodet, ikke skriv det):
 1. Hva GJØR personen på bildet? (drikker øl, gjør gangstertegn, poserer, smiler, ser flau ut...)
@@ -1018,13 +1036,13 @@ Svar KUN med JSON (ingen markdown):
       const txt=await callAI([{role:"user",content:[
         {type:"image",source:{type:"base64",media_type:mime,data:b64}},
         {type:"text",text:prompt}
-      ]}]);
+      ]}],500,"claude-haiku-4-5-20251001");
       const m=txt.match(/\{[\s\S]*?\}/);
       if(!m)throw new Error("Ingen JSON i svar");
       const res=JSON.parse(m[0]);
       if(!res||typeof res.nickname!=="string"||res.nickname.length<2)throw new Error("Ugyldig navn");
       setAiR(res);
-      setPd(d=>({...d,weight:String(res.weight||d.weight),height:String(res.height||d.height),gender:(res.gender==="kvinne"?"kvinne":"mann")}));
+      setPd(d=>{const cy=new Date().getFullYear();const by=res.age?cy-Number(res.age):null;const bd=(d.birthdate&&d.birthdate.length>0)?d.birthdate:((by&&by>1920&&by<cy)?by+"-06-15":d.birthdate);return{...d,weight:String(res.weight||d.weight),height:String(res.height||d.height),gender:(res.gender==="kvinne"?"kvinne":"mann"),birthdate:bd};});
     }catch(e){
       setAiR(randomNick(pd.name));
     }
@@ -1092,8 +1110,8 @@ Svar KUN med JSON (ingen markdown):
       const lvl=RC_LEVELS[rcDifficulty]||RC_LEVELS.mix;
       const ex=(RULE_CHANGE_ALL[rcDifficulty]||RULE_CHANGE).slice(0,5);
       const usedList=Array.from(used).slice(-40);
-      const prompt=`Du lager nye, originale "Rule Change"-regler til en norsk golf-app for kompiser som ikke tar seg selv for seriøst.\n\nVANSKELIGHETSGRAD: ${lvl.label} — ${lvl.desc}\n\nEn regel er en absurd/morsom tilleggsregel som gjelder for ETT golfhull og alle spillerne.\n\nSTIL (lag NYE i samme ånd, IKKE gjenbruk disse): ${ex.map(e=>'"'+e+'"').join(", ")}\n\nALDRI gjenta disse allerede brukte reglene: ${usedList.map(e=>'"'+e+'"').join(", ")||"(ingen ennå)"}\n\nKRAV: norsk, kort (maks 9 ord), konkret, fysisk gjennomførbar på en ekte golfbane, og match vanskelighetsgraden over. Vær kreativ og variert — ikke bare småvarianter av eksemplene.\n\nSvar KUN med en JSON-array med 8 strenger. Ingen markdown, ingen forklaring. Eksempel-format: ["regel én","regel to"]`;
-      const txt=await callAI([{role:"user",content:prompt}],600);
+      const prompt=(lang==="en"?"CRITICAL: Write ALL the rules in ENGLISH.\n\n":"")+`Du lager nye, originale "Rule Change"-regler til en norsk golf-app for kompiser som ikke tar seg selv for seriøst.\n\nVANSKELIGHETSGRAD: ${lvl.label} — ${lvl.desc}\n\nEn regel er en absurd/morsom tilleggsregel som gjelder for ETT golfhull og alle spillerne.\n\nSTIL (lag NYE i samme ånd, IKKE gjenbruk disse): ${ex.map(e=>'"'+e+'"').join(", ")}\n\nALDRI gjenta disse allerede brukte reglene: ${usedList.map(e=>'"'+e+'"').join(", ")||"(ingen ennå)"}\n\nKRAV: norsk, kort (maks 9 ord), konkret, fysisk gjennomførbar på en ekte golfbane, og match vanskelighetsgraden over. Vær kreativ og variert — ikke bare småvarianter av eksemplene.\n\nSvar KUN med en JSON-array med 8 strenger. Ingen markdown, ingen forklaring. Eksempel-format: ["regel én","regel to"]`;
+      const txt=await callAI([{role:"user",content:prompt}],600,"claude-haiku-4-5-20251001");
       let arr=[];try{const m=txt.match(/\[[\s\S]*\]/);if(m)arr=JSON.parse(m[0]);}catch(e){}
       arr=(Array.isArray(arr)?arr:[]).filter(r=>typeof r==="string"&&r.trim().length>2&&!used.has(r.trim())).map(r=>r.trim());
       setRcAiLoading(false);
@@ -1121,8 +1139,8 @@ Svar KUN med JSON (ingen markdown):
       const mult=lone?3:1;const bet=money?uval:1;
       if(lone){
         const bestOpp=Math.min(...oppScores);
-        if(wolfScore<bestOpp){opponents.forEach(p=>{ws[wolf.id]+=bet*mult;ws[p.id]-=bet;});}
-        else if(wolfScore>bestOpp){opponents.forEach(p=>{ws[wolf.id]-=bet*mult;ws[p.id]+=bet;});}
+        if(wolfScore<bestOpp){opponents.forEach(p=>{ws[wolf.id]+=bet*mult;ws[p.id]-=bet*mult;});}
+        else if(wolfScore>bestOpp){opponents.forEach(p=>{ws[wolf.id]-=bet*mult;ws[p.id]+=bet*mult;});}
       }else if(partner){
         const pScore=scores[partner.id]?.[hh];
         if(pScore==null)continue;
@@ -1162,10 +1180,63 @@ Svar KUN med JSON (ingen markdown):
       for(let hh=1;hh<=hc;hh++){const hs=players.map(p=>({id:p.id,s:scores[p.id]?.[hh]})).filter(x=>x.s!=null);if(hs.length<2)continue;const mn=Math.min(...hs.map(x=>x.s));const mx=Math.max(...hs.map(x=>x.s));if(mn===mx)continue;const lows=hs.filter(x=>x.s===mn);const highs=hs.filter(x=>x.s===mx);if(lows.length===1&&highs.length===1){t[lows[0].id]+=bet;t[highs[0].id]-=bet;}}
       return t;
     }
+    if(gid==="nines"){
+      const nP=Math.min(players.length,4);const ps=players.slice(0,nP);
+      const map={};ps.forEach(p=>map[p.id]=0);
+      for(let hh=1;hh<=hc;hh++){
+        const hs=ps.map(p=>({id:p.id,s:scores[p.id]?.[hh]})).filter(x=>x.s!=null);
+        if(hs.length<2)continue;hs.sort((a,b)=>a.s-b.s);
+        if(hs.length===3){const[a,b_,c]=hs;
+          if(a.s<b_.s&&b_.s<c.s){map[a.id]+=5;map[b_.id]+=3;map[c.id]+=1;}
+          else if(a.s===b_.s&&b_.s<c.s){map[a.id]+=4;map[b_.id]+=4;map[c.id]+=1;}
+          else if(a.s<b_.s&&b_.s===c.s){map[a.id]+=5;map[b_.id]+=2;map[c.id]+=2;}
+          else{map[a.id]+=3;map[b_.id]+=3;map[c.id]+=3;}
+        }else if(hs.length>=4){const pts=[4,3,2,0];let i=0;
+          while(i<hs.length){let j=i;while(j<hs.length&&hs[j].s===hs[i].s)j++;const avg=pts.slice(i,j).reduce((a,b)=>a+b,0)/(j-i);for(let k=i;k<j;k++)map[hs[k].id]+=avg;i=j;}
+        }
+      }
+      const totPts=Object.values(map).reduce((a,b)=>a+b,0);const avgP=ps.length?totPts/ps.length:0;
+      ps.forEach(p=>{t[p.id]=Math.round((map[p.id]-avgP)*bet*10)/10;});
+      return t;
+    }
     if(gid==="banker"){
       const bankPl=players[bankerIdx%players.length];
       const others=players.filter(p=>p.id!==bankPl.id);
       for(let hh=1;hh<=hc;hh++){const bS=scores[bankPl.id]?.[hh];if(bS==null)continue;others.forEach(op=>{const oS=scores[op.id]?.[hh];if(oS==null)return;if(bS<oS){t[bankPl.id]+=bet;t[op.id]-=bet;}else if(bS>oS){t[bankPl.id]-=bet;t[op.id]+=bet;}});}
+      return t;
+    }
+    if(gid==="bingo"){
+      const tot={};players.forEach(p=>tot[p.id]=0);
+      Object.values(bingoClaims).forEach(s=>{if(!s)return;["bingo","bango","bongo"].forEach(k=>{if(s[k]&&tot[s[k]]!==undefined)tot[s[k]]++;});});
+      const totPts=Object.values(tot).reduce((a,b)=>a+b,0);const avgP=players.length?totPts/players.length:0;
+      players.forEach(p=>{t[p.id]=Math.round((tot[p.id]-avgP)*bet*10)/10;});
+      return t;
+    }
+    if(gid==="sixes"){
+      const ps4=[players[0],players[1],players[2],players[3]].filter(Boolean);
+      if(ps4.length<4)return t;
+      const PA=[[ps4[0].id,ps4[1].id],[ps4[2].id,ps4[3].id],[ps4[0].id,ps4[2].id],[ps4[1].id,ps4[3].id],[ps4[0].id,ps4[3].id],[ps4[1].id,ps4[2].id]];
+      const team={a:0,b:0};
+      for(let hh=1;hh<=hc;hh++){const ph=hh<=6?0:hh<=12?1:2;const tA=PA[ph*2],tB=PA[ph*2+1];
+        const sA=tA.reduce((s,id)=>{const v=scores[id]?.[hh];return v!=null&&s!=null?s+v:null},0);
+        const sB=tB.reduce((s,id)=>{const v=scores[id]?.[hh];return v!=null&&s!=null?s+v:null},0);
+        if(sA!=null&&sB!=null){if(sA<sB)team.a+=bet;else if(sB<sA)team.b+=bet;}}
+      // Periodevise lag varierer; nettoresultat fordeles paa hver spiller etter deres lags total over hele runden
+      const indiv={};ps4.forEach(p=>indiv[p.id]=0);
+      for(let hh=1;hh<=hc;hh++){const ph=hh<=6?0:hh<=12?1:2;const tA=PA[ph*2],tB=PA[ph*2+1];
+        const sA=tA.reduce((s,id)=>{const v=scores[id]?.[hh];return v!=null&&s!=null?s+v:null},0);
+        const sB=tB.reduce((s,id)=>{const v=scores[id]?.[hh];return v!=null&&s!=null?s+v:null},0);
+        if(sA!=null&&sB!=null&&sA!==sB){const win=sA<sB?tA:tB,los=sA<sB?tB:tA;win.forEach(id=>indiv[id]+=bet);los.forEach(id=>indiv[id]-=bet);}}
+      ps4.forEach(p=>t[p.id]=indiv[p.id]);
+      return t;
+    }
+    if(gid==="rabbit"){
+      const holderAt=(from,to_)=>{let holder=null;for(let hh=from;hh<=to_;hh++){const hs=players.map(p=>({id:p.id,s:scores[p.id]?.[hh]})).filter(x=>x.s!=null);if(hs.length<2)continue;const mn=Math.min(...hs.map(x=>x.s));const ws=hs.filter(x=>x.s===mn);if(ws.length===1)holder=ws[0].id;}return holder;};
+      const award=(winnerId,pot)=>{if(!winnerId)return;const others=players.filter(p=>p.id!==winnerId);t[winnerId]+=pot*bet*others.length;others.forEach(p=>t[p.id]-=pot*bet);};
+      // Fremre 9 laases ved H9 (halv pott=1), bakre laases ved H18 (full pott=2) — kun naar perioden er ferdigspilt
+      const frontComplete=players.every(p=>scores[p.id]?.[9]!=null)||hc<9;
+      if(hc>=9&&frontComplete)award(holderAt(1,9),1);
+      if(hc>=18){const backComplete=players.every(p=>scores[p.id]?.[18]!=null);if(backComplete)award(holderAt(10,18),2);}
       return t;
     }
     // Spill uten penge-nullsum (nines/bingo=poeng, rabbit/joker=pott, scramble/sixes=lag, rule_change/vegas) — ingen auto-penger
@@ -1329,31 +1400,6 @@ Svar KUN med JSON (ingen markdown):
       )
     ),
 
-    // THEME PICKER
-    h("div",{className:"card",style:{marginBottom:12}},
-      h("p",{style:{fontSize:11,fontWeight:800,letterSpacing:"0.12em",color:"var(--text3)",marginBottom:14,textTransform:"uppercase"}},"🎨 Velg tema"),
-      h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}},
-        THEMES.map(t=>{
-          const sel=theme===t.id;
-          return h("button",{key:t.id,onClick:()=>{},style:{
-            padding:"10px 12px",borderRadius:10,cursor:"pointer",textAlign:"left",
-            border:"1.5px solid "+(sel?"var(--accent)":"var(--border2)"),
-            background:sel?"var(--accent-bg)":"var(--bg3)",
-            transition:"all 0.2s"
-          }},
-            h("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:4}},
-              h("span",{style:{fontSize:18}},t.emoji),
-              h("div",{style:{display:"flex",gap:3}},
-                t.preview.map((c,i)=>h("div",{key:i,style:{width:12,height:12,borderRadius:"50%",background:c,border:"1px solid rgba(255,255,255,0.15)"}}))
-              ),
-              sel&&h("span",{style:{fontSize:11,color:"var(--accent)",fontWeight:800,marginLeft:"auto"}},"✓")
-            ),
-            h("p",{style:{margin:0,fontSize:12,fontWeight:700,color:sel?"var(--accent)":"var(--text)"}},t.label),
-            h("p",{style:{margin:0,fontSize:10,color:"var(--text3)"}},t.desc)
-          );
-        })
-      )
-    ),
     h("div",{className:"card"},h("p",{style:{fontSize:14,fontWeight:700,margin:"0 0 12px"}},L("editProfile")),h(ProfForm,{pd,setPd,ip,anl,aiR,handleImg,runAI,lang}),h("button",{className:"btn btnp",style:{marginTop:4},onClick:()=>{saveProf();setSc("home");}},L("saveProfile"))),
     h("button",{style:{width:"100%",padding:"12px",fontSize:13,borderRadius:8,border:"1.5px solid var(--red-border)",background:"none",color:"var(--red)",marginTop:8,cursor:"pointer"},onClick:async()=>{if(confirm("Slett profilen?")){await del_(PK);setProf(null);setAged(false);setSc("agecheck");}}},L("deleteProfile"))
   )
@@ -2411,7 +2457,7 @@ Svar KUN med JSON:
           if(maxS===minS)continue;
           const losers=hs.filter(x=>x.s===maxS);
           const winners=hs.filter(x=>x.s===minS);
-          losers.forEach(l=>winners.forEach(w=>{hlMoney[l.p.id]-=bet;hlMoney[w.p.id]+=bet;}));
+          if(losers.length===1&&winners.length===1){hlMoney[losers[0].p.id]-=bet;hlMoney[winners[0].p.id]+=bet;}
         }
         const hsSc=players.map(p=>({p,s:scores[p.id]?.[hole]})).filter(x=>x.s!=null);
         const maxSC=hsSc.length?Math.max(...hsSc.map(x=>x.s)):null;
@@ -2510,7 +2556,8 @@ Svar KUN med JSON:
         const anyInitialized=players.some(p=>jokerCards[p.id]!==undefined);
         if(!anyInitialized&&players.length>0){
           const init={};
-          players.forEach(p=>{init[p.id]=["replay","double","shield"];});
+          // Hver spiller faar 4 jokerkort: replay, double, shield, bomb
+          players.forEach(p=>{init[p.id]=["replay","double","shield","bomb"];});
           setJokerCards(init);
         }
         // Matchplay score: track hole wins
@@ -2632,6 +2679,13 @@ Svar KUN med JSON:
         // 4 players, switch partners every 6 holes
         // H1-6: A+B vs C+D, H7-12: A+C vs B+D, H13-18: A+D vs B+C
         const [p0,p1,p2,p3]=[players[0],players[1],players[2],players[3]].filter(Boolean);
+        if(players.length!==4){
+          return h("div",{className:"card ci"},
+            h("p",{style:{fontSize:11,fontWeight:800,color:"var(--blue)",margin:"0 0 8px",letterSpacing:"0.1em",textTransform:"uppercase"}},"🔀 Sixes"),
+            h("p",{style:{fontSize:14,fontWeight:700,color:"var(--red)",margin:"0 0 4px"}},"⚠️ Sixes krever nøyaktig 4 spillere"),
+            h("p",{style:{fontSize:13,color:"var(--muted)",margin:0,lineHeight:1.4}},"Dere er "+players.length+" spillere nå. Sixes bytter lag hver 6. hull (2 mot 2), så det fungerer kun med 4. Gå tilbake og velg et annet spill, eller juster antall spillere.")
+          );
+        }
         const period=hole<=6?0:hole<=12?1:2;
         const PARTNERSHIPS=[
           [p0?.id,p1?.id],[p2?.id,p3?.id],  // H1-6
