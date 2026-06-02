@@ -905,14 +905,14 @@ function App(){
       if(s&&s.players?.length>0){
         setSaved(s);
         // AUTO-RESUME: var vi midt i en runde da appen lukket? Hopp rett inn!
-        if(s.scr==="game"&&prof_&&isOver18(prof_.birthdate)){
+        if(s.scr==="game"&&prof_){
           setIsHost(true);
           rfState({...s,scr:"game"});
           return; // skip splash helt
         }
-        setSplashDest(prof_?"resume":"agecheck");
+        setSplashDest(prof_?"resume":"home");
       }
-      else setSplashDest(prof_?"home":"agecheck");
+      else setSplashDest("home");
       // Husk aldersbekreftelse for brukere uten full profil ennaa
       if(!prof_){try{const bd=localStorage.getItem("sb_aged_bd");if(bd){setAged(isOver18(bd));}}catch(e){}}
     });
@@ -1040,8 +1040,8 @@ Svar KUN med JSON (ingen markdown):
       const txt=await callAI([{role:"user",content:[
         {type:"image",source:{type:"base64",media_type:mime,data:b64}},
         {type:"text",text:prompt}
-      ]}],500,"claude-haiku-4-5-20251001");
-      const m=txt.match(/\{[\s\S]*?\}/);
+      ]}],700,"claude-sonnet-4-5");
+      const m=txt.match(/\{[\s\S]*\}/);
       if(!m)throw new Error("Ingen JSON i svar");
       const res=JSON.parse(m[0]);
       if(!res||typeof res.nickname!=="string"||res.nickname.length<2)throw new Error("Ugyldig navn");
@@ -1055,7 +1055,7 @@ Svar KUN med JSON (ingen markdown):
 
   function saveProf(){
     const p={...pd,id:prof?.id||"u_"+Math.random().toString(36).slice(2,8),img:ip||prof?.img,hcp:parseFloat(pd.hcp)||18,weight:parseFloat(pd.weight)||80,height:parseFloat(pd.height)||178,isFemale:pd.gender==="kvinne",ageVerified:isOver18(pd.birthdate),birthdate:pd.birthdate||"",aiNick:aiR?.nickname||prof?.aiNick||"",aiReason:aiR?.reason||prof?.aiReason||"",aiAge:aiR?.age||prof?.aiAge||null,lang:lang};
-    setProf(p);sto(PK,p);
+    setProf(p);setAged(isOver18(p.birthdate));sto(PK,p);
     // Save to cloud so profile survives re-downloads
     saveProfileCloud(p).then(uid=>{
       if(uid){
@@ -1380,6 +1380,10 @@ Svar KUN med JSON (ingen markdown):
         h("p",{style:{margin:"2px 0 0",fontSize:12,color:"#8890a0"}},(lang==="en"?"Name, handicap and a funny AI nickname":"Navn, handicap og et morsomt AI-kallenavn"))
       )
     ),
+    saved&&saved.players&&saved.players.length>0&&h("button",{className:"card ci",style:{textAlign:"left",cursor:"pointer",width:"100%",marginBottom:16,border:"1.5px solid var(--accent)"},onClick:()=>{rfState(saved);}},
+      h("p",{style:{margin:"0 0 4px",fontWeight:800,fontSize:16,color:"var(--accent)"}},(lang==="en"?"▶ Resume round":"▶ Fortsett runde")),
+      h("p",{style:{margin:0,fontSize:13,color:"#c4bca8"}},(saved.players.length)+(lang==="en"?" players · hole ":" spillere · hull ")+(saved.hole||1))
+    ),
     h("h2",{style:{fontSize:20,fontWeight:800,margin:"0 0 16px"}},L("startRound").replace("⛳ ","")),
     h("div",{style:{display:"flex",flexDirection:"column",gap:10}},
       h("button",{className:"card ci",style:{textAlign:"left",cursor:"pointer"},onClick:()=>{
@@ -1424,7 +1428,7 @@ Svar KUN med JSON (ingen markdown):
     ),
 
     h("div",{className:"card"},h("p",{style:{fontSize:14,fontWeight:700,margin:"0 0 12px"}},L("editProfile")),h(ProfForm,{pd,setPd,ip,anl,aiR,handleImg,runAI,lang}),h("button",{className:"btn btnp",style:{marginTop:4},onClick:()=>{saveProf();setSc("home");}},L("saveProfile"))),
-    h("button",{style:{width:"100%",padding:"12px",fontSize:13,borderRadius:8,border:"1.5px solid var(--red-border)",background:"none",color:"var(--red)",marginTop:8,cursor:"pointer"},onClick:async()=>{if(confirm("Slett profilen?")){await del_(PK);setProf(null);setAged(false);setSc("agecheck");}}},L("deleteProfile"))
+    h("button",{style:{width:"100%",padding:"12px",fontSize:13,borderRadius:8,border:"1.5px solid var(--red-border)",background:"none",color:"var(--red)",marginTop:8,cursor:"pointer"},onClick:async()=>{if(confirm("Slett profilen?")){await del_(PK);setProf(null);setAged(false);setSc("home");}}},L("deleteProfile"))
   )
   );
 
