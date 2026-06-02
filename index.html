@@ -480,6 +480,7 @@ const HOLE_PARS=[null,4,4,3,4,5,3,4,4,4,4,3,5,4,4,3,4,5,4];
 const HCP_MODES=[
   {id:"stableford",label:"Stableford",short:"Poeng mot par med HCP-slag",desc:"Eagle=4p Birdie=3p Par=2p Bogey=1p. HCP-slag trekkes fra score per hull. Høyest poengsum vinner."},
   {id:"stroke",label:"Stroke Play",short:"Telleslag minus HCP — lavest vinner",desc:"Netto total = brutto slag minus HCP. Lavest netto score vinner."},
+  {id:"scratch",label:"Scratch",short:"Uten handicap — alle helt likestilt",desc:"Ingen HCP-slag for noen. Rå slag teller. Enkelt og rettferdig når dere er på ukjent bane eller bare vil ha det gøy. Lavest score vinner alt."},
 ];
 
 const BONUSES=[
@@ -1075,6 +1076,7 @@ Svar KUN med JSON (ingen markdown):
     return wid(drinks,p.weight||80,p.isFemale);
   }
   function effHcp(p){
+    if(hmode==="scratch")return 0; // Scratch: ingen HCP-slag for noen — alt likestilt
     const base=parseFloat(p.hcp)||0;
     const beerBonus=bacX(bacOf(p)); // More drunk = MORE HCP = more strokes to good
     if(hmode==="stableford"||hmode==="stroke")return base;
@@ -1093,6 +1095,16 @@ Svar KUN med JSON (ingen markdown):
     const gross=Object.values(scores[p.id]||{}).reduce((a,b)=>a+b,0);
     return gross-Math.round(effHcp(p));
   }
+  // WHS net double bogey-cap: maks score for handicap-formaal = par + 2 + handicap-slag paa hullet.
+  // Brukes KUN til handicap-rapportering, IKKE til aa avgjoere hvem som vinner runden (jf. Rules of Handicapping).
+  function ndbHole(p,h_){
+    const s=scores[p.id]?.[h_];if(s==null)return null;
+    const par=hp[String(h_)]||HOLE_PARS[h_]||4;
+    const strokes=hcpH(Math.round(effHcp(p)),(hi[String(h_)]?hi[String(h_)]-1:h_-1),hc);
+    const cap=par+2+strokes;
+    return Math.min(s,cap);
+  }
+  function adjGrossForHandicap(p){let t=0;for(let h_=1;h_<=hc;h_++){const v=ndbHole(p,h_);if(v!=null)t+=v;}return t;}
   function addScore(pid,h_,d){setScores(s=>{const cur=s[pid]?.[h_]||3;return{...s,[pid]:{...(s[pid]||{}),[h_]:Math.max(1,cur+d)}};});}
   function addDrink(pid,units){setDrks(d=>({...d,[pid]:[...(d[pid]||[]),{units,time:Date.now()}]}));}
   function recEv(pid,eid,isB){const key=hole+"-"+pid+"-"+eid;setHd(d=>{if(d[key]){const n={...d};delete n[key];return n;}return{...d,[key]:{pid,eid,isB,hole,value:isB?uval:-uval}};});if(eid==="three_putt")setSh(pid);}
@@ -1163,7 +1175,7 @@ Svar KUN med JSON (ingen markdown):
     if(gid==="wolf"){return wolfT();}
     if(gid==="skins"){
       const skinMap={};players.forEach(p=>skinMap[p.id]=0);let pot=1;
-      for(let hh=1;hh<=hc;hh++){const hs=players.map(p=>({id:p.id,s:scores[p.id]?.[hh]})).filter(x=>x.s!=null);if(hs.length<2){continue;}const mn=Math.min(...hs.map(x=>x.s));const ws=hs.filter(x=>x.s===mn);if(ws.length===1){skinMap[ws[0].id]+=pot;pot=1;}else pot++;}
+      for(let hh=1;hh<=hc;hh++){const hs=players.map(p=>({id:p.id,s:scores[p.id]?.[hh]})).filter(x=>x.s!=null);if(hs.length<players.length){continue;}const mn=Math.min(...hs.map(x=>x.s));const ws=hs.filter(x=>x.s===mn);if(ws.length===1){skinMap[ws[0].id]+=pot;pot=1;}else pot++;}
       // Nullsum: hver skin er verdt 'bet' fra hver andre spiller
       const totalSkins=Object.values(skinMap).reduce((a,b)=>a+b,0);
       players.forEach(p=>{t[p.id]=(skinMap[p.id]*bet*(players.length-1))-((totalSkins-skinMap[p.id])*bet);});
@@ -1248,6 +1260,7 @@ Svar KUN med JSON (ingen markdown):
   const holePar=hp[String(hole)]||HOLE_PARS[hole]||4;
   const gObj=GAMES[gid];
   const isSF=hmode==="stableford"||hmode==="stableford_beer";
+  const isScratch=hmode==="scratch";
 
   // Hull-vinner
   const hSc=players.map(p=>({p,s:scores[p.id]?.[hole]})).filter(x=>x.s!=null);
@@ -1884,8 +1897,9 @@ Svar KUN med JSON:
               h("p",{style:{margin:0,fontSize:12,color:"var(--muted)"}},"HCP "+p.hcp)
             ),
             h("div",{style:{textAlign:"right"}},
-              h("p",{style:{margin:"0 0 2px",fontFamily:"'Bebas Neue',Impact",fontSize:32,color:i===0?"var(--gold)":"var(--text)"}},isSF?sf+"p":net+" netto"),
-              h("p",{style:{margin:0,fontSize:11,color:"var(--muted)"}},total+" slag brutto")
+              h("p",{style:{margin:"0 0 2px",fontFamily:"'Bebas Neue',Impact",fontSize:32,color:i===0?"var(--gold)":"var(--text)"}},isSF?sf+"p":isScratch?total+" slag":net+" netto"),
+              !isScratch&&h("p",{style:{margin:0,fontSize:11,color:"var(--muted)"}},total+" slag brutto"),
+              (()=>{if(isScratch)return null;const adj=adjGrossForHandicap(p);return adj<total?h("p",{style:{margin:"2px 0 0",fontSize:10,color:"var(--accent)",fontWeight:700}},"HCP-justert: "+adj+" (net dbl bogey)"):null;})()
             )
           ))
         ),
@@ -1922,7 +1936,7 @@ Svar KUN med JSON:
                   overs.length>0&&h("span",{style:{fontSize:11,color:"var(--red)",fontWeight:600}},overs.length+" over")
                 )
               ),
-              h("p",{style:{margin:0,fontFamily:"'Bebas Neue',Impact",fontSize:26,color:i===0?"var(--gold)":"var(--text)"}},isSF?x.sf+"p":x.net+" netto")
+              h("p",{style:{margin:0,fontFamily:"'Bebas Neue',Impact",fontSize:26,color:i===0?"var(--gold)":"var(--text)"}},isSF?x.sf+"p":isScratch?x.total+" slag":x.net+" netto")
             );
           })
         ),
@@ -2063,7 +2077,7 @@ Svar KUN med JSON:
 
       if(gid==="skins"){
         const skinMap={};players.forEach(p=>skinMap[p.id]=0);let pot=1;
-        for(let hh=1;hh<hole;hh++){const hs=players.map(p=>({id:p.id,s:scores[p.id]?.[hh]})).filter(x=>x.s!=null);if(hs.length<2){pot++;continue;}const mn=Math.min(...hs.map(x=>x.s));const ws=hs.filter(x=>x.s===mn);if(ws.length===1){skinMap[ws[0].id]+=pot;pot=1;}else pot++;}
+        for(let hh=1;hh<hole;hh++){const hs=players.map(p=>({id:p.id,s:scores[p.id]?.[hh]})).filter(x=>x.s!=null);if(hs.length<players.length){continue;}const mn=Math.min(...hs.map(x=>x.s));const ws=hs.filter(x=>x.s===mn);if(ws.length===1){skinMap[ws[0].id]+=pot;pot=1;}else pot++;}
         const sorted=[...players].sort((a,b)=>(skinMap[b.id]||0)-(skinMap[a.id]||0));
         return h("div",{className:"card ci"},
           h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}},h("div",null,
