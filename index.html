@@ -527,12 +527,42 @@ function sfP(score,par,strokes){return Math.max(0,2-((score-strokes)-par));}
 // Translation helper — used throughout app
 // L is set dynamically after lang state is available (see in App)
 
+// Må matche APP_TOKEN-secreten i cloudflare-worker.js
+const APP_TOKEN="626aae31b446d7222db8b9fa73ae383b2ba2a87b75455975";
 async function callAI(msgs,max,model){
   try{
-    const res=await fetch("https://sandbagger-ai.mariuseidsmo.workers.dev/",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:model||"claude-sonnet-4-5",max_tokens:max||500,messages:msgs})});
+    const res=await fetch("https://sandbagger-ai.mariuseidsmo.workers.dev/",{method:"POST",headers:{"Content-Type":"application/json","X-App-Token":APP_TOKEN},body:JSON.stringify({model:model||"claude-sonnet-4-5",max_tokens:max||500,messages:msgs})});
     const d=await res.json();
     return d.content?.find(c=>c.type==="text")?.text||"{}";
   }catch(e){console.error(e);return"{}";}
+}
+
+// ── Bane-database (golfcourseapi.com via worker-proxy) ──────────────────
+const WORKER_URL="https://sandbagger-ai.mariuseidsmo.workers.dev";
+async function searchCourses(q){
+  try{
+    const r=await fetch(WORKER_URL+"/course/search?q="+encodeURIComponent(q),{headers:{"X-App-Token":APP_TOKEN}});
+    if(!r.ok)return [];
+    const d=await r.json();
+    return d.courses||[];
+  }catch(e){return [];}
+}
+async function fetchCourse(id){
+  try{
+    const r=await fetch(WORKER_URL+"/course/"+id,{headers:{"X-App-Token":APP_TOKEN}});
+    if(!r.ok)return null;
+    const d=await r.json();
+    return d.course||d;
+  }catch(e){return null;}
+}
+// Mapper golfcourseapi-svar → appens format {name,cr,slope,hp,hi,hc}
+function mapCourse(c){
+  const tee=(c.tees?.male&&c.tees.male[0])||(c.tees?.female&&c.tees.female[0])||null;
+  const holes=tee?.holes||[];
+  const hp={},hi={};
+  holes.forEach((h,i)=>{const n=String(i+1);if(h.par)hp[n]=h.par;if(h.handicap)hi[n]=h.handicap;});
+  const name=c.course_name&&c.club_name&&c.course_name!==c.club_name?(c.club_name+" — "+c.course_name):(c.club_name||c.course_name||"Bane");
+  return {id:c.id,name,cr:tee?.course_rating||null,slope:tee?.slope_rating||null,hp,hi,hc:holes.length>=18?18:(holes.length||18)};
 }
 
 function Av({p,sz,img}){
@@ -609,22 +639,9 @@ function PhotoBg({screenKey}){
 // ── MULTI-DEVICE SYNC via kvdb.io ────────────────────────────────────────
 // Free public key-value store — no auth needed
 // Each room gets its own key: "sandbagger_" + roomCode
-const KVDB_BUCKET = "01jwa8kqmber5t0hnhb4jynsa5"; // free shared bucket
+const KVDB_BUCKET = "CW4N18BqtbGq2PjE1kGiwx"; // kvdb-bøtte knyttet til mariuseidsmo@gmail.com (erstattet død bøtte 2026-06)
 
-// ── PROFILE BACKUP — encode/decode as shareable text code ───────────────
-// Since file:// blocks fetch(), we use a copy-paste code approach
-// The code is just base64(JSON) — user copies it to restore on any device
-
-function profileToCode(profile){
-  try{return btoa(unescape(encodeURIComponent(JSON.stringify(profile))));}
-  catch(e){return null;}
-}
-
-function codeToProfile(code){
-  try{return JSON.parse(decodeURIComponent(escape(atob(code.trim()))));}
-  catch(e){return null;}
-}
-
+// ── PROFILE BACKUP — lagres lokalt + redundant nøkkel ───────────────
 function saveProfileLocal(profile){
   try{localStorage.setItem(PK,JSON.stringify(profile));}catch(e){}
   // Also save to all known localStorage keys for redundancy
@@ -666,6 +683,29 @@ async function syncLoad(rc){
     const r=await fetch("https://kvdb.io/"+KVDB_BUCKET+"/"+key);
     if(!r.ok)return null;
     return await r.json();
+  }catch(e){return null;}
+}
+
+// ── Delt norsk bane-DB (crowdsourcet via skann) ─────────────────────────
+// Lagres i kvdb under én felles nøkkel. Skanner én person en bane, får alle den.
+const KVDB_COURSES_KEY="courses_no_v1";
+async function loadSharedCourses(){
+  try{
+    const r=await fetch("https://kvdb.io/"+KVDB_BUCKET+"/"+KVDB_COURSES_KEY);
+    if(!r.ok)return [];
+    const d=await r.json();
+    return Array.isArray(d)?d:[];
+  }catch(e){return [];}
+}
+async function saveSharedCourse(course){
+  try{
+    const cur=await loadSharedCourses();
+    const nm=(course.name||"").toLowerCase().trim();
+    const next=[course,...cur.filter(c=>c.id!==course.id&&(c.name||"").toLowerCase().trim()!==nm)].slice(0,1000);
+    await fetch("https://kvdb.io/"+KVDB_BUCKET+"/"+KVDB_COURSES_KEY,{
+      method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(next)
+    });
+    return next;
   }catch(e){return null;}
 }
 
@@ -827,6 +867,12 @@ function App(){
   const [scanMime,setScanMime]=useState(null);
   const [scanLoading,setScanLoading]=useState(false);
   const [scanResult,setScanResult]=useState(null);
+  const [courseQuery,setCourseQuery]=useState("");
+  const [courseResults,setCourseResults]=useState(null); // null=ikke søkt, []=ingen treff
+  const [courseSearching,setCourseSearching]=useState(false);
+  const [savedCourses,setSavedCourses]=useState(()=>{try{return JSON.parse(localStorage.getItem("sb_courses")||"[]");}catch{return [];}});
+  const [sharedCourses,setSharedCourses]=useState([]);
+  useEffect(()=>{loadSharedCourses().then(setSharedCourses);},[]);
   // Joker state
   const [jokerCards,setJokerCards]=useState({});
   const [bankerIdx,setBankerIdx]=useState(0);      // which player is banker per hole
@@ -920,8 +966,6 @@ function App(){
 
   // Sync state — save locally + broadcast to room
   const [splashDest,setSplashDest]=React.useState("home");
-  const [showRestore,setShowRestore]=React.useState(false);
-  const [restoreCode,setRestoreCode]=React.useState("");
   const [isHost,setIsHost]=React.useState(false);
   const [syncStatus,setSyncStatus]=React.useState(""); // "", "syncing", "ok", "offline"
 
@@ -1110,6 +1154,43 @@ Svar KUN med JSON (ingen markdown):
   function adjGrossForHandicap(p){let t=0;for(let h_=1;h_<=hc;h_++){const v=ndbHole(p,h_);if(v!=null)t+=v;}return t;}
   function addScore(pid,h_,d){setScores(s=>{const cur=s[pid]?.[h_]||3;return{...s,[pid]:{...(s[pid]||{}),[h_]:Math.max(1,cur+d)}};});}
   function addDrink(pid,units){setDrks(d=>({...d,[pid]:[...(d[pid]||[]),{units,time:Date.now()}]}));}
+  // Tar i bruk en bane (allerede mappet til {name,cr,slope,hp,hi,hc}) + cacher den lokalt
+  function useCourse(m){
+    setCourseName(m.name);
+    if(m.cr)setCourseCR(String(m.cr));
+    if(m.slope)setCourseSlope(String(m.slope));
+    setHp(m.hp||{});setHi(m.hi||{});setHc(m.hc||18);
+    setSavedCourses(prev=>{const next=[m,...prev.filter(x=>x.id!==m.id)].slice(0,30);try{localStorage.setItem("sb_courses",JSON.stringify(next));}catch(_){ }return next;});
+    setCourseResults(null);setCourseQuery("");
+  }
+  async function doCourseSearch(){
+    const q=courseQuery.trim();if(q.length<2)return;
+    setCourseSearching(true);setCourseResults(null);
+    const ql=q.toLowerCase();
+    // 🇳🇴 Norske (delte) baner først, så 🌍 globale fra golfcourseapi
+    const local=(sharedCourses||[]).filter(c=>(c.name||"").toLowerCase().includes(ql)).map(c=>({...c,_local:true}));
+    const global=await searchCourses(q);
+    setCourseResults([...local,...global]);setCourseSearching(false);
+  }
+  // Lagrer gjeldende bane (fra skann/manuell) til den delte norske DB-en + lokal cache
+  async function saveCurrentCourse(){
+    if(!courseName.trim()){alert("Skriv inn banenavn først.");return;}
+    if(!Object.keys(hi).length){alert("Banen mangler handicapindeks per hull — fyll inn eller skann først, ellers blir netto/penger feil.");return;}
+    const m={id:"no_"+courseName.trim().toLowerCase().replace(/[^a-z0-9]+/g,"_"),name:courseName.trim(),cr:parseFloat(courseCR)||null,slope:parseFloat(courseSlope)||null,hp:{...hp},hi:{...hi},hc,src:"scan"};
+    const next=await saveSharedCourse(m);
+    if(next){setSharedCourses(next);}
+    setSavedCourses(prev=>{const n=[m,...prev.filter(x=>x.id!==m.id)].slice(0,30);try{localStorage.setItem("sb_courses",JSON.stringify(n));}catch(_){ }return n;});
+    alert(next?"✅ Banen er lagret og delt — den dukker opp i \"Velg bane\" for alle.":"Lagret lokalt (delt lagring utilgjengelig – offline?).");
+  }
+  async function pickCourse(id){
+    setCourseSearching(true);
+    const c=await fetchCourse(id);
+    setCourseSearching(false);
+    if(!c){alert("Klarte ikke hente banen — prøv igjen.");return;}
+    const m=mapCourse(c);
+    if(!Object.keys(m.hi).length){if(!confirm("Denne banen mangler handicapindeks per hull — netto/penger blir feil. Bruke den likevel?"))return;}
+    useCourse(m);
+  }
   function recEv(pid,eid,isB){const key=hole+"-"+pid+"-"+eid;setHd(d=>{if(d[key]){const n={...d};delete n[key];return n;}return{...d,[key]:{pid,eid,isB,hole,value:isB?uval:-uval}};});if(eid==="three_putt")setSh(pid);}
   function hasEv(pid,eid){return!!(hd[hole+"-"+pid+"-"+eid]);}
   // AI-generert Rule Change-regel — ferske, originale regler tilpasset vanskelighetsgrad
@@ -1135,6 +1216,14 @@ Svar KUN med JSON (ingen markdown):
       setNewRule(arr[0]);
     }catch(e){setRcAiLoading(false);setNewRule(fallbackRule(used));}
   }
+  // Netto-score for PENGESPILL: brutto minus handicap-slag på hullet.
+  // Scratch → effHcp=0 → netto=brutto. Stableford/Stroke → handicap trekkes (rettferdig pengespill).
+  function netFor(pid,hh){
+    const s=scores[pid]?.[hh];if(s==null)return null;
+    const pl=players.find(p=>p.id===pid);if(!pl)return s;
+    const strokes=hcpH(Math.round(effHcp(pl)),(hi[String(hh)]?hi[String(hh)]-1:hh-1),hc);
+    return s-strokes;
+  }
   // Delt Wolf-beregning — brukes BAADE i game-skjerm og i summary (fikser bug der Wolf-penger forsvant)
   function wolfT(){
     const ws={};players.forEach(p=>ws[p.id]=0);
@@ -1146,10 +1235,10 @@ Svar KUN med JSON (ingen markdown):
       const dec=wolfHoles?.[hh]||{};
       const partner=dec.par?players.find(p=>p.id===dec.par):null;
       const lone=dec.lone||false;
-      const wolfScore=scores[wolf.id]?.[hh];
+      const wolfScore=netFor(wolf.id,hh);
       if(wolfScore==null)continue;
       const opponents=players.filter(p=>p.id!==wolf.id&&(!partner||p.id!==partner.id));
-      const oppScores=opponents.map(p=>scores[p.id]?.[hh]).filter(s=>s!=null);
+      const oppScores=opponents.map(p=>netFor(p.id,hh)).filter(s=>s!=null);
       if(!oppScores.length)continue;
       const mult=lone?3:1;const bet=money?uval:1;
       if(lone){
@@ -1157,11 +1246,12 @@ Svar KUN med JSON (ingen markdown):
         if(wolfScore<bestOpp){opponents.forEach(p=>{ws[wolf.id]+=bet*mult;ws[p.id]-=bet*mult;});}
         else if(wolfScore>bestOpp){opponents.forEach(p=>{ws[wolf.id]-=bet*mult;ws[p.id]+=bet*mult;});}
       }else if(partner){
-        const pScore=scores[partner.id]?.[hh];
+        const pScore=netFor(partner.id,hh);
         if(pScore==null)continue;
         const teamBest=Math.min(wolfScore,pScore);const oppBest=Math.min(...oppScores);
-        if(teamBest<oppBest){ws[wolf.id]+=bet;ws[partner.id]+=bet;opponents.forEach(p=>ws[p.id]-=bet);}
-        else if(teamBest>oppBest){ws[wolf.id]-=bet;ws[partner.id]-=bet;opponents.forEach(p=>ws[p.id]+=bet);}
+        const k=opponents.length;
+        if(teamBest<oppBest){ws[wolf.id]+=bet;ws[partner.id]+=bet;opponents.forEach(p=>ws[p.id]-=2*bet/k);}
+        else if(teamBest>oppBest){ws[wolf.id]-=bet;ws[partner.id]-=bet;opponents.forEach(p=>ws[p.id]+=2*bet/k);}
       }else{
         const bestOpp=Math.min(...oppScores);
         if(wolfScore<bestOpp){opponents.forEach(p=>{ws[wolf.id]+=bet;ws[p.id]-=bet;});}
@@ -1178,28 +1268,28 @@ Svar KUN med JSON (ingen markdown):
     if(gid==="wolf"){return wolfT();}
     if(gid==="skins"){
       const skinMap={};players.forEach(p=>skinMap[p.id]=0);let pot=1;
-      for(let hh=1;hh<=hc;hh++){const hs=players.map(p=>({id:p.id,s:scores[p.id]?.[hh]})).filter(x=>x.s!=null);if(hs.length<players.length){continue;}const mn=Math.min(...hs.map(x=>x.s));const ws=hs.filter(x=>x.s===mn);if(ws.length===1){skinMap[ws[0].id]+=pot;pot=1;}else pot++;}
+      for(let hh=1;hh<=hc;hh++){const hs=players.map(p=>({id:p.id,s:netFor(p.id,hh)})).filter(x=>x.s!=null);if(hs.length<players.length){continue;}const mn=Math.min(...hs.map(x=>x.s));const ws=hs.filter(x=>x.s===mn);if(ws.length===1){skinMap[ws[0].id]+=pot;pot=1;}else pot++;}
       // Nullsum: hver skin er verdt 'bet' fra hver andre spiller
       const totalSkins=Object.values(skinMap).reduce((a,b)=>a+b,0);
       players.forEach(p=>{t[p.id]=(skinMap[p.id]*bet*(players.length-1))-((totalSkins-skinMap[p.id])*bet);});
       return t;
     }
     if(gid==="nassau"){
-      const holeWinner=hh=>{const hs=players.map(p=>({id:p.id,s:scores[p.id]?.[hh]})).filter(x=>x.s!=null);if(hs.length<2)return null;const mn=Math.min(...hs.map(x=>x.s));const ws=hs.filter(x=>x.s===mn);return ws.length===1?ws[0].id:null;};
+      const holeWinner=hh=>{const hs=players.map(p=>({id:p.id,s:netFor(p.id,hh)})).filter(x=>x.s!=null);if(hs.length<2)return null;const mn=Math.min(...hs.map(x=>x.s));const ws=hs.filter(x=>x.s===mn);return ws.length===1?ws[0].id:null;};
       const periodScore=(from,to_)=>{const wins={};players.forEach(p=>wins[p.id]=0);for(let hh=from;hh<=to_;hh++){const w=holeWinner(hh);if(w)wins[w]++;}const sorted=Object.entries(wins).sort((a,b)=>b[1]-a[1]);if(!sorted.length||sorted[0][1]===0)return null;if(sorted.length>1&&sorted[0][1]===sorted[1][1])return{winner:null,tied:true};return{winner:sorted[0][0],tied:false};};
       const periods=hc<=9?[periodScore(1,hc)]:[periodScore(1,9),periodScore(10,hc),periodScore(1,hc)];
       periods.forEach(res=>{if(res&&res.winner){t[res.winner]+=bet*(players.length-1);players.filter(p=>p.id!==res.winner).forEach(p=>t[p.id]-=bet);}});
       return t;
     }
     if(gid==="high_low"){
-      for(let hh=1;hh<=hc;hh++){const hs=players.map(p=>({id:p.id,s:scores[p.id]?.[hh]})).filter(x=>x.s!=null);if(hs.length<2)continue;const mn=Math.min(...hs.map(x=>x.s));const mx=Math.max(...hs.map(x=>x.s));if(mn===mx)continue;const lows=hs.filter(x=>x.s===mn);const highs=hs.filter(x=>x.s===mx);if(lows.length===1&&highs.length===1){t[lows[0].id]+=bet;t[highs[0].id]-=bet;}}
+      for(let hh=1;hh<=hc;hh++){const hs=players.map(p=>({id:p.id,s:netFor(p.id,hh)})).filter(x=>x.s!=null);if(hs.length<2)continue;const mn=Math.min(...hs.map(x=>x.s));const mx=Math.max(...hs.map(x=>x.s));if(mn===mx)continue;const lows=hs.filter(x=>x.s===mn);const highs=hs.filter(x=>x.s===mx);if(lows.length===1&&highs.length===1){t[lows[0].id]+=bet;t[highs[0].id]-=bet;}}
       return t;
     }
     if(gid==="nines"){
       const nP=Math.min(players.length,4);const ps=players.slice(0,nP);
       const map={};ps.forEach(p=>map[p.id]=0);
       for(let hh=1;hh<=hc;hh++){
-        const hs=ps.map(p=>({id:p.id,s:scores[p.id]?.[hh]})).filter(x=>x.s!=null);
+        const hs=ps.map(p=>({id:p.id,s:netFor(p.id,hh)})).filter(x=>x.s!=null);
         if(hs.length<2)continue;hs.sort((a,b)=>a.s-b.s);
         if(hs.length===3){const[a,b_,c]=hs;
           if(a.s<b_.s&&b_.s<c.s){map[a.id]+=5;map[b_.id]+=3;map[c.id]+=1;}
@@ -1211,20 +1301,20 @@ Svar KUN med JSON (ingen markdown):
         }
       }
       const totPts=Object.values(map).reduce((a,b)=>a+b,0);const avgP=ps.length?totPts/ps.length:0;
-      ps.forEach(p=>{t[p.id]=Math.round((map[p.id]-avgP)*bet*10)/10;});
+      ps.forEach(p=>{t[p.id]=(map[p.id]-avgP)*bet;});
       return t;
     }
     if(gid==="banker"){
       const bankPl=players[bankerIdx%players.length];
       const others=players.filter(p=>p.id!==bankPl.id);
-      for(let hh=1;hh<=hc;hh++){const bS=scores[bankPl.id]?.[hh];if(bS==null)continue;others.forEach(op=>{const oS=scores[op.id]?.[hh];if(oS==null)return;if(bS<oS){t[bankPl.id]+=bet;t[op.id]-=bet;}else if(bS>oS){t[bankPl.id]-=bet;t[op.id]+=bet;}});}
+      for(let hh=1;hh<=hc;hh++){const bS=netFor(bankPl.id,hh);if(bS==null)continue;others.forEach(op=>{const oS=netFor(op.id,hh);if(oS==null)return;if(bS<oS){t[bankPl.id]+=bet;t[op.id]-=bet;}else if(bS>oS){t[bankPl.id]-=bet;t[op.id]+=bet;}});}
       return t;
     }
     if(gid==="bingo"){
       const tot={};players.forEach(p=>tot[p.id]=0);
       Object.values(bingoClaims).forEach(s=>{if(!s)return;["bingo","bango","bongo"].forEach(k=>{if(s[k]&&tot[s[k]]!==undefined)tot[s[k]]++;});});
       const totPts=Object.values(tot).reduce((a,b)=>a+b,0);const avgP=players.length?totPts/players.length:0;
-      players.forEach(p=>{t[p.id]=Math.round((tot[p.id]-avgP)*bet*10)/10;});
+      players.forEach(p=>{t[p.id]=(tot[p.id]-avgP)*bet;});
       return t;
     }
     if(gid==="sixes"){
@@ -1233,20 +1323,20 @@ Svar KUN med JSON (ingen markdown):
       const PA=[[ps4[0].id,ps4[1].id],[ps4[2].id,ps4[3].id],[ps4[0].id,ps4[2].id],[ps4[1].id,ps4[3].id],[ps4[0].id,ps4[3].id],[ps4[1].id,ps4[2].id]];
       const team={a:0,b:0};
       for(let hh=1;hh<=hc;hh++){const ph=hh<=6?0:hh<=12?1:2;const tA=PA[ph*2],tB=PA[ph*2+1];
-        const sA=tA.reduce((s,id)=>{const v=scores[id]?.[hh];return v!=null&&s!=null?s+v:null},0);
-        const sB=tB.reduce((s,id)=>{const v=scores[id]?.[hh];return v!=null&&s!=null?s+v:null},0);
+        const sA=tA.reduce((s,id)=>{const v=netFor(id,hh);return v!=null&&s!=null?s+v:null},0);
+        const sB=tB.reduce((s,id)=>{const v=netFor(id,hh);return v!=null&&s!=null?s+v:null},0);
         if(sA!=null&&sB!=null){if(sA<sB)team.a+=bet;else if(sB<sA)team.b+=bet;}}
       // Periodevise lag varierer; nettoresultat fordeles paa hver spiller etter deres lags total over hele runden
       const indiv={};ps4.forEach(p=>indiv[p.id]=0);
       for(let hh=1;hh<=hc;hh++){const ph=hh<=6?0:hh<=12?1:2;const tA=PA[ph*2],tB=PA[ph*2+1];
-        const sA=tA.reduce((s,id)=>{const v=scores[id]?.[hh];return v!=null&&s!=null?s+v:null},0);
-        const sB=tB.reduce((s,id)=>{const v=scores[id]?.[hh];return v!=null&&s!=null?s+v:null},0);
+        const sA=tA.reduce((s,id)=>{const v=netFor(id,hh);return v!=null&&s!=null?s+v:null},0);
+        const sB=tB.reduce((s,id)=>{const v=netFor(id,hh);return v!=null&&s!=null?s+v:null},0);
         if(sA!=null&&sB!=null&&sA!==sB){const win=sA<sB?tA:tB,los=sA<sB?tB:tA;win.forEach(id=>indiv[id]+=bet);los.forEach(id=>indiv[id]-=bet);}}
       ps4.forEach(p=>t[p.id]=indiv[p.id]);
       return t;
     }
     if(gid==="rabbit"){
-      const holderAt=(from,to_)=>{let holder=null;for(let hh=from;hh<=to_;hh++){const hs=players.map(p=>({id:p.id,s:scores[p.id]?.[hh]})).filter(x=>x.s!=null);if(hs.length<2)continue;const mn=Math.min(...hs.map(x=>x.s));const ws=hs.filter(x=>x.s===mn);if(ws.length===1)holder=ws[0].id;}return holder;};
+      const holderAt=(from,to_)=>{let holder=null;for(let hh=from;hh<=to_;hh++){const hs=players.map(p=>({id:p.id,s:netFor(p.id,hh)})).filter(x=>x.s!=null);if(hs.length<2)continue;const mn=Math.min(...hs.map(x=>x.s));const ws=hs.filter(x=>x.s===mn);if(ws.length===1)holder=ws[0].id;}return holder;};
       const award=(winnerId,pot)=>{if(!winnerId)return;const others=players.filter(p=>p.id!==winnerId);t[winnerId]+=pot*bet*others.length;others.forEach(p=>t[p.id]-=pot*bet);};
       // Fremre 9 laases ved H9 (halv pott=1), bakre laases ved H18 (full pott=2) — kun naar perioden er ferdigspilt
       const frontComplete=players.every(p=>scores[p.id]?.[9]!=null)||hc<9;
@@ -1257,7 +1347,29 @@ Svar KUN med JSON (ingen markdown):
     // Spill uten penge-nullsum (nines/bingo=poeng, rabbit/joker=pott, scramble/sixes=lag, rule_change/vegas) — ingen auto-penger
     return t;
   }
-  function moneyT(){const t={};players.forEach(p=>t[p.id]=0);Object.values(hd).forEach(({pid,value})=>{if(t[pid]!==undefined)t[pid]+=value;});if(snake&&sh&&t[sh]!==undefined)t[sh]-=uval*2;const gt=gameT();players.forEach(p=>{if(t[p.id]!==undefined)t[p.id]+=(gt[p.id]||0);});return t;}
+  function moneyT(){
+    const t={};players.forEach(p=>t[p.id]=0);
+    const ids=players.map(p=>p.id);const n=ids.length;
+    // Spillmodus-penger (nullsum av konstruksjon)
+    const gt=gameT();ids.forEach(id=>{if(t[id]!==undefined)t[id]+=(gt[id]||0);});
+    // Sidespill peer-to-peer: spilleren beholder sitt viste beløp, motparten fordeles likt
+    // på de andre — slik at alt alltid summerer til 0.
+    Object.values(hd).forEach(({pid,value})=>{
+      if(t[pid]===undefined||n<2)return;
+      t[pid]+=value;const share=value/(n-1);
+      ids.forEach(id=>{if(id!==pid&&t[id]!==undefined)t[id]-=share;});
+    });
+    // Snake: holderen betaler 2 enheter, fordelt på de andre
+    if(snake&&sh&&t[sh]!==undefined&&n>=2){
+      const pen=uval*2;t[sh]-=pen;const share=pen/(n-1);
+      ids.forEach(id=>{if(id!==sh&&t[id]!==undefined)t[id]+=share;});
+    }
+    // Én felles avrunding til 1 desimal som tvinger summen til eksakt 0
+    let sumR=0;ids.forEach(id=>{if(t[id]!==undefined){t[id]=Math.round(t[id]*10)/10;sumR+=t[id];}});
+    sumR=Math.round(sumR*10)/10;
+    if(sumR!==0&&n){let fix=ids[0];ids.forEach(id=>{if(t[id]!==undefined&&Math.abs(t[id])>Math.abs(t[fix]))fix=id;});t[fix]=Math.round((t[fix]-sumR)*10)/10;}
+    return t;
+  }
 
   const T=moneyT();
   const holePar=hp[String(hole)]||HOLE_PARS[hole]||4;
@@ -1266,7 +1378,7 @@ Svar KUN med JSON (ingen markdown):
   const isScratch=hmode==="scratch";
 
   // Hull-vinner
-  const hSc=players.map(p=>({p,s:scores[p.id]?.[hole]})).filter(x=>x.s!=null);
+  const hSc=players.map(p=>({p,s:netFor(p.id,hole)})).filter(x=>x.s!=null);
   const hMin=hSc.length?Math.min(...hSc.map(x=>x.s)):null;
   const hWins=hSc.filter(x=>x.s===hMin);
   const hWin=hWins.length===1?hWins[0].p:null;
@@ -1288,42 +1400,6 @@ Svar KUN med JSON (ingen markdown):
         width:i===0?24:8,height:4,borderRadius:2,
         background:i===0?"var(--accent)":"rgba(255,255,255,0.2)"
       }}))
-    ),
-    h("div",{style:{marginBottom:12}},
-      showRestore
-        ? h("div",{style:{display:"flex",gap:8}},
-            h("input",{
-              value:restoreCode,
-              onChange:ev=>setRestoreCode(ev.target.value.toUpperCase().slice(0,8)),
-              placeholder:"Din 8-tegns kode",
-              style:{flex:1,fontSize:16,letterSpacing:"0.15em",textAlign:"center",
-                padding:"14px",borderRadius:12,border:"1.5px solid var(--accent-border)",
-                background:"var(--bg2)",color:"var(--text)",fontWeight:700}
-            }),
-            h("button",{
-              onClick:async()=>{
-                if(!restoreCode||restoreCode.length<6)return;
-                const cp=codeToProfile(restoreCode.trim());
-                if(cp&&cp.name){
-                  saveProfileLocal(cp);
-                  sto(PK,cp);
-                  setProf(cp);setAged(isOver18(cp.birthdate));
-                  alert("✅ Profil gjenopprettet: "+cp.name+"!");
-                  setShowRestore(false);
-                  setSc("home");
-                }else{
-                  alert("Ugyldig kode. Kopier koden fra Min Side → Sikkerhetskopi.");
-                }
-              },
-              style:{padding:"14px 18px",borderRadius:12,border:"1.5px solid var(--accent-border)",
-                background:"var(--accent-bg)",color:"var(--accent)",fontWeight:800,fontSize:14,cursor:"pointer"}
-            },"✓")
-          )
-        : h("button",{
-            onClick:()=>setShowRestore(true),
-            style:{width:"100%",padding:"12px",borderRadius:12,border:"1.5px solid var(--border)",
-              background:"transparent",color:"rgba(255,255,255,0.5)",fontSize:13,fontWeight:600,cursor:"pointer"}
-          },"Har du spilt før? Gjenopprett profil")
     ),
     h("button",{className:"btn btnp",onClick:()=>setSc(splashDest||"home")},"Kom i gang →")
   )
@@ -1388,7 +1464,7 @@ Svar KUN med JSON (ingen markdown):
     h("div",{style:{display:"flex",flexDirection:"column",gap:10}},
       h("button",{className:"card ci",style:{textAlign:"left",cursor:"pointer"},onClick:()=>{
         const ps=prof?[prof]:[];setPlayers(ps);setStep(0);
-        const code="SAND-"+Math.floor(1000+Math.random()*9000);setRc(code);setIsHost(true);
+        const _A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let code="SAND-";for(let _i=0;_i<5;_i++)code+=_A[Math.floor(Math.random()*_A.length)];setRc(code);setIsHost(true);
         setScores({});setHd({});setHole(1);setDrks({});setSh(null);
         setWolfIdx(0);setWolfPar(null);setWolfLone(false);setWolfHoles({});setIsHost(true);setSc("setup");
       }},h("p",{style:{margin:"0 0 4px",fontWeight:800,fontSize:16,color:"var(--text)"}},L("startRound")),h("p",{style:{margin:0,fontSize:13,color:"#aeb6d4"}},L("startRoundDesc"))),
@@ -1428,7 +1504,15 @@ Svar KUN med JSON (ingen markdown):
     ),
 
     h("div",{className:"card"},h("p",{style:{fontSize:14,fontWeight:700,margin:"0 0 12px"}},L("editProfile")),h(ProfForm,{pd,setPd,ip,anl,aiR,handleImg,runAI,lang}),h("button",{className:"btn btnp",style:{marginTop:4},onClick:()=>{saveProf();setSc("home");}},L("saveProfile"))),
-    h("button",{style:{width:"100%",padding:"12px",fontSize:13,borderRadius:8,border:"1.5px solid var(--red-border)",background:"none",color:"var(--red)",marginTop:8,cursor:"pointer"},onClick:async()=>{if(confirm("Slett profilen?")){await del_(PK);setProf(null);setAged(false);setSc("home");}}},L("deleteProfile"))
+    h("button",{style:{width:"100%",padding:"12px",fontSize:13,borderRadius:8,border:"1.5px solid var(--red-border)",background:"none",color:"var(--red)",marginTop:8,cursor:"pointer"},onClick:async()=>{if(confirm("Slett profilen?")){await del_(PK);setProf(null);setAged(false);setSc("home");}}},L("deleteProfile")),
+    h("div",{className:"card",style:{marginTop:8}},
+      h("p",{style:{fontSize:13,fontWeight:700,margin:"0 0 4px"}},"💾 Sikkerhetskopi"),
+      h("p",{style:{fontSize:12,color:"var(--muted)",margin:"0 0 10px",lineHeight:1.4}},"Last ned all data (profil, historikk, innstillinger) som en fil, eller gjenopprett fra en tidligere backup. Nyttig om du bytter telefon eller tømmer nettleseren."),
+      h("div",{style:{display:"flex",gap:8}},
+        h("button",{style:{flex:1,padding:"11px",fontSize:13,fontWeight:700,borderRadius:8,border:"1.5px solid var(--accent-border)",background:"var(--accent-bg)",color:"var(--accent)",cursor:"pointer"},onClick:()=>{try{const data={},pf=["golf_","sb_","sandbagger","room_"];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&pf.some(p=>k.indexOf(p)===0))data[k]=localStorage.getItem(k);}const blob=new Blob([JSON.stringify(data)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="sandbagger-backup.json";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}catch(e){alert("Eksport feilet: "+e.message);}}},"⬇ Eksporter"),
+        h("button",{style:{flex:1,padding:"11px",fontSize:13,fontWeight:700,borderRadius:8,border:"1.5px solid var(--border2)",background:"var(--bg3)",color:"var(--text)",cursor:"pointer"},onClick:()=>{const inp=document.createElement("input");inp.type="file";inp.accept="application/json,.json";inp.onchange=ev=>{const f=ev.target.files&&ev.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const data=JSON.parse(rd.result);if(!data||typeof data!=="object")throw new Error("Ugyldig fil");let n=0;Object.keys(data).forEach(k=>{try{localStorage.setItem(k,data[k]);n++;}catch(_){}});alert("Gjenopprettet "+n+" elementer. Appen lastes på nytt.");location.reload();}catch(err){alert("Import feilet: "+err.message);}};rd.readAsText(f);};inp.click();}},"⬆ Importer")
+      )
+    )
   )
   );
 
@@ -1437,7 +1521,7 @@ Svar KUN med JSON (ingen markdown):
     h("div",{style:{position:"relative",zIndex:1,padding:"64px 20px 80px"}},
     h("button",{className:"btnback",onClick:()=>setSc("home")},L("back")),
     h("h2",{style:{fontSize:18,fontWeight:800,margin:"0 0 1.5rem"}},"Bli med i runde"),
-    h("input",{placeholder:"GOLF-1234",value:rcode,onChange:ev=>setRcode(ev.target.value.toUpperCase()),style:{fontSize:20,textAlign:"center",letterSpacing:6,marginBottom:12}}),
+    h("input",{placeholder:"SAND-A3KP9",value:rcode,onChange:ev=>setRcode(ev.target.value.toUpperCase()),style:{fontSize:20,textAlign:"center",letterSpacing:6,marginBottom:12}}),
     h("button",{className:"btn btnp",onClick:async()=>{const code=rcode.trim();if(!code)return;// Try sync first (multi-device), then local
 let rd=await syncLoad(code);
 if(!rd)rd=await lod("room_"+code);
@@ -1677,7 +1761,8 @@ rfState({...rd,players:allPlayers,scr:"game"});}},"Bli med")
             ["0.5‰ ~ 1 øl → +1 HCP","1.0‰ ~ 2 øl → +3 HCP","1.5‰ ~ 3 øl → +5 HCP","2.0‰+ = 4+ øl → +8 HCP"].map((t,i)=>
               h("div",{key:i,style:{padding:"8px",background:"var(--amber-bg)",borderRadius:8,fontSize:11,color:"var(--gold)",fontWeight:700,textAlign:"center"}},t)
             )
-          )
+          ),
+          h("p",{style:{fontSize:11,color:"var(--red)",fontWeight:700,marginTop:10,lineHeight:1.4,textAlign:"center"}},"⚠️ Kun et grovt anslag for moro skyld – ikke et reelt promillemål. Kjør aldri basert på dette tallet.")
         ),
 
         // Not 18+ warning
@@ -1726,7 +1811,34 @@ rfState({...rd,players:allPlayers,scr:"game"});}},"Bli med")
 
       step===4&&h("div",null,
         h("h2",{style:{fontSize:18,fontWeight:800,margin:"0 0 4px"}},"Scorekort & Baneinformasjon"),
-        h("p",{style:{fontSize:13,color:"#6a7098",margin:"0 0 12px"}},"Skann banekortet med AI eller fyll inn manuelt"),
+        h("p",{style:{fontSize:13,color:"#6a7098",margin:"0 0 12px"}},"Søk opp banen, skann banekortet med AI, eller fyll inn manuelt"),
+
+        // ── VELG BANE (golfcourseapi via worker) ──
+        h("div",{className:"card cs",style:{marginBottom:12}},
+          h("p",{style:{fontSize:13,fontWeight:800,color:"var(--accent)",marginBottom:6,letterSpacing:"0.08em",textTransform:"uppercase"}},"🔍 Velg bane"),
+          h("p",{style:{fontSize:12,color:"#6a7098",marginBottom:10}},"Søk i den globale banedatabasen — par og handicapindeks fylles inn automatisk."),
+          h("div",{style:{display:"flex",gap:8,marginBottom:10}},
+            h("input",{value:courseQuery,placeholder:"f.eks. Oslo Golfklubb",onChange:ev=>setCourseQuery(ev.target.value),onKeyDown:ev=>{if(ev.key==="Enter")doCourseSearch();},style:{flex:1}}),
+            h("button",{onClick:doCourseSearch,disabled:courseSearching||courseQuery.trim().length<2,style:{padding:"0 16px",fontSize:14,fontWeight:700,borderRadius:10,border:"1.5px solid var(--accent-border)",background:"var(--accent-bg)",color:"var(--accent)",cursor:"pointer"}},courseSearching?"…":"Søk")
+          ),
+          courseResults&&courseResults.length>0&&h("div",{style:{display:"flex",flexDirection:"column",gap:6,marginBottom:6}},
+            courseResults.slice(0,20).map(c=>c._local
+              ? h("button",{key:c.id,onClick:()=>useCourse(c),style:{textAlign:"left",padding:"10px 12px",borderRadius:10,border:"1.5px solid var(--accent-border)",background:"var(--accent-bg)",cursor:"pointer"}},
+                  h("p",{style:{margin:0,fontSize:14,fontWeight:700,color:"var(--text)"}},"🇳🇴 "+c.name),
+                  h("p",{style:{margin:"2px 0 0",fontSize:11,color:"var(--muted)"}},"Norsk bane · delt"))
+              : h("button",{key:c.id,onClick:()=>pickCourse(c.id),style:{textAlign:"left",padding:"10px 12px",borderRadius:10,border:"1.5px solid var(--border2)",background:"var(--bg3)",cursor:"pointer"}},
+                  h("p",{style:{margin:0,fontSize:14,fontWeight:700,color:"var(--text)"}},"🌍 "+(c.club_name||c.course_name||"Bane")),
+                  (c.course_name&&c.course_name!==c.club_name)||c.location?h("p",{style:{margin:"2px 0 0",fontSize:11,color:"var(--muted)"}},[c.course_name&&c.course_name!==c.club_name?c.course_name:null,c.location?.address||c.location?.city||c.location?.country||null].filter(Boolean).join(" · ")):null)
+            )
+          ),
+          courseResults&&courseResults.length===0&&!courseSearching&&h("p",{style:{fontSize:12,color:"var(--muted)",margin:"4px 0"}},"Ingen treff — prøv et annet navn, eller skann/fyll inn manuelt under."),
+          savedCourses.length>0&&h("div",{style:{marginTop:8}},
+            h("p",{style:{fontSize:10,fontWeight:700,color:"var(--muted)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}},"Nylig brukt"),
+            h("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
+              savedCourses.map(m=>h("button",{key:m.id,onClick:()=>useCourse(m),style:{padding:"6px 10px",fontSize:12,fontWeight:600,borderRadius:8,border:"1.5px solid var(--border2)",background:"var(--bg3)",color:"var(--text2)",cursor:"pointer"}},"📍 "+m.name))
+            )
+          )
+        ),
 
         h("div",{className:"card cs",style:{marginBottom:12}},
           h("p",{style:{fontSize:13,fontWeight:800,color:"var(--accent)",marginBottom:6,letterSpacing:"0.08em",textTransform:"uppercase"}},"📷 Skann banekort med AI"),
@@ -1866,6 +1978,7 @@ Svar KUN med JSON:
             })
           )
         ),
+        (courseName.trim()&&Object.keys(hi).length>0)&&h("button",{onClick:saveCurrentCourse,style:{width:"100%",padding:"12px",fontSize:13,fontWeight:700,borderRadius:10,border:"1.5px solid var(--accent-border)",background:"var(--accent-bg)",color:"var(--accent)",cursor:"pointer",marginBottom:10}},"💾 Lagre & del denne banen (for alle)"),
         h("button",{className:"btn btnp",onClick:nxt},"Se oppsummering →")
       ),
 
@@ -2024,7 +2137,7 @@ Svar KUN med JSON:
 
       if(gid==="nassau"){
         function nassauHoleWinner(hh){
-          const hs=players.map(p=>({id:p.id,s:scores[p.id]?.[hh]})).filter(x=>x.s!=null);
+          const hs=players.map(p=>({id:p.id,s:netFor(p.id,hh)})).filter(x=>x.s!=null);
           if(hs.length<2)return null;
           const mn=Math.min(...hs.map(x=>x.s));
           const ws=hs.filter(x=>x.s===mn);
@@ -2091,7 +2204,7 @@ Svar KUN med JSON:
 
       if(gid==="skins"){
         const skinMap={};players.forEach(p=>skinMap[p.id]=0);let pot=1;
-        for(let hh=1;hh<hole;hh++){const hs=players.map(p=>({id:p.id,s:scores[p.id]?.[hh]})).filter(x=>x.s!=null);if(hs.length<players.length){continue;}const mn=Math.min(...hs.map(x=>x.s));const ws=hs.filter(x=>x.s===mn);if(ws.length===1){skinMap[ws[0].id]+=pot;pot=1;}else pot++;}
+        for(let hh=1;hh<hole;hh++){const hs=players.map(p=>({id:p.id,s:netFor(p.id,hh)})).filter(x=>x.s!=null);if(hs.length<players.length){continue;}const mn=Math.min(...hs.map(x=>x.s));const ws=hs.filter(x=>x.s===mn);if(ws.length===1){skinMap[ws[0].id]+=pot;pot=1;}else pot++;}
         const sorted=[...players].sort((a,b)=>(skinMap[b.id]||0)-(skinMap[a.id]||0));
         return h("div",{className:"card ci"},
           h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}},h("div",null,
@@ -2111,7 +2224,7 @@ Svar KUN med JSON:
       if(gid==="rabbit"){
         let frontHolder=null,backHolder=null;
         for(let hh=1;hh<hole;hh++){
-          const hs=players.map(p=>({id:p.id,s:scores[p.id]?.[hh]})).filter(x=>x.s!=null);
+          const hs=players.map(p=>({id:p.id,s:netFor(p.id,hh)})).filter(x=>x.s!=null);
           if(hs.length<2)continue;
           const mn=Math.min(...hs.map(x=>x.s));
           const ws=hs.filter(x=>x.s===mn);
@@ -2299,58 +2412,9 @@ Svar KUN med JSON:
           setWolfHoles(prev=>({...prev,[hole]:{par,lone}}));
         };
         
-        // Calculate Wolf standings across all played holes
-        const wolfScores={};
-        players.forEach(p=>wolfScores[p.id]=0);
-        
-        for(let hh=1;hh<hole;hh++){
-          const wIdx=(hh-1)%players.length;
-          const wolf=players[wIdx];
-          if(!wolf)continue;
-          const dec=wolfHoles?.[hh]||{};
-          const partner=dec.par?players.find(p=>p.id===dec.par):null;
-          const lone=dec.lone||false;
-          
-          const wolfScore=scores[wolf.id]?.[hh];
-          if(wolfScore==null)continue;
-          
-          const opponents=players.filter(p=>p.id!==wolf.id&&(!partner||p.id!==partner.id));
-          const oppScores=opponents.map(p=>scores[p.id]?.[hh]).filter(s=>s!=null);
-          if(!oppScores.length)continue;
-          
-          const mult=lone?3:1;
-          const bet=money?uval:1;
-          
-          if(lone){
-            // Lone Wolf vs everyone
-            const bestOpp=Math.min(...oppScores);
-            if(wolfScore<bestOpp){
-              // Wolf wins — gets from all opponents
-              opponents.forEach(p=>{wolfScores[wolf.id]+=bet*mult;wolfScores[p.id]-=bet;});
-            }else if(wolfScore>bestOpp){
-              // Wolf loses — pays all opponents
-              opponents.forEach(p=>{wolfScores[wolf.id]-=bet*mult;wolfScores[p.id]+=bet;});
-            }
-          }else if(partner){
-            // Wolf + partner vs others
-            const pScore=scores[partner.id]?.[hh];
-            if(pScore==null)continue;
-            const teamBest=Math.min(wolfScore,pScore);
-            const oppBest=Math.min(...oppScores);
-            if(teamBest<oppBest){
-              wolfScores[wolf.id]+=bet;wolfScores[partner.id]+=bet;
-              opponents.forEach(p=>wolfScores[p.id]-=bet);
-            }else if(teamBest>oppBest){
-              wolfScores[wolf.id]-=bet;wolfScores[partner.id]-=bet;
-              opponents.forEach(p=>wolfScores[p.id]+=bet);
-            }
-          }else{
-            // No decision = Wolf plays alone (default 1x)
-            const bestOpp=Math.min(...oppScores);
-            if(wolfScore<bestOpp){opponents.forEach(p=>{wolfScores[wolf.id]+=bet;wolfScores[p.id]-=bet;});}
-            else if(wolfScore>bestOpp){opponents.forEach(p=>{wolfScores[wolf.id]-=bet;wolfScores[p.id]+=bet;});}
-          }
-        }
+        // Wolf-standings — bruker SAMME autoritative beregning som sluttoppgjøret
+        // (wolfT er nullsum-korrekt og netto-aware via netFor). Én sannhet, ingen avvik.
+        const wolfScores=wolfT();
         
         const nextWolf=players[(hole)%players.length];
         
@@ -2428,7 +2492,7 @@ Svar KUN med JSON:
         const ps=players.slice(0,nP);
         const map={};ps.forEach(p=>map[p.id]=0);
         for(let hh=1;hh<hole;hh++){
-          const hs=ps.map(p=>({id:p.id,s:scores[p.id]?.[hh]})).filter(x=>x.s!=null);
+          const hs=ps.map(p=>({id:p.id,s:netFor(p.id,hh)})).filter(x=>x.s!=null);
           if(hs.length<2)continue;
           hs.sort((a,b)=>a.s-b.s);
           if(hs.length===3){
@@ -2443,7 +2507,7 @@ Svar KUN med JSON:
           }
         }
         const sorted=ps.slice().sort((a,b)=>map[b.id]-map[a.id]);
-        const hsSc=ps.map(p=>({p,s:scores[p.id]?.[hole]})).filter(x=>x.s!=null).sort((a,b)=>a.s-b.s);
+        const hsSc=ps.map(p=>({p,s:netFor(p.id,hole)})).filter(x=>x.s!=null).sort((a,b)=>a.s-b.s);
         return h("div",{className:"card ci"},
           h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
             h("p",{style:{fontSize:11,fontWeight:800,color:"var(--blue)",margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}},"🎯 NINES"),infoBtn),
@@ -2478,7 +2542,7 @@ Svar KUN med JSON:
         const hlMoney={};players.forEach(p=>hlMoney[p.id]=0);
         const bet=money?uval:1;
         for(let hh=1;hh<hole;hh++){
-          const hs=players.map(p=>({p,s:scores[p.id]?.[hh]})).filter(x=>x.s!=null);
+          const hs=players.map(p=>({p,s:netFor(p.id,hh)})).filter(x=>x.s!=null);
           if(hs.length<2)continue;
           const maxS=Math.max(...hs.map(x=>x.s));
           const minS=Math.min(...hs.map(x=>x.s));
@@ -2487,7 +2551,7 @@ Svar KUN med JSON:
           const winners=hs.filter(x=>x.s===minS);
           if(losers.length===1&&winners.length===1){hlMoney[losers[0].p.id]-=bet;hlMoney[winners[0].p.id]+=bet;}
         }
-        const hsSc=players.map(p=>({p,s:scores[p.id]?.[hole]})).filter(x=>x.s!=null);
+        const hsSc=players.map(p=>({p,s:netFor(p.id,hole)})).filter(x=>x.s!=null);
         const maxSC=hsSc.length?Math.max(...hsSc.map(x=>x.s)):null;
         const minSC=hsSc.length?Math.min(...hsSc.map(x=>x.s)):null;
         const curLosers=hsSc.filter(x=>x.s===maxSC);
@@ -2591,7 +2655,7 @@ Svar KUN med JSON:
         // Matchplay score: track hole wins
         const jScore={};players.forEach(p=>jScore[p.id]=0);
         for(let hh=1;hh<hole;hh++){
-          const hs=players.map(p=>({id:p.id,s:scores[p.id]?.[hh]})).filter(x=>x.s!=null);
+          const hs=players.map(p=>({id:p.id,s:netFor(p.id,hh)})).filter(x=>x.s!=null);
           if(hs.length<2)continue;
           const mn=Math.min(...hs.map(x=>x.s));
           const ws=hs.filter(x=>x.s===mn);
@@ -2649,10 +2713,10 @@ Svar KUN med JSON:
         // Calculate: bank vs each opponent per hole
         const bankResults=[];
         for(let hh=1;hh<hole;hh++){
-          const bS=scores[bankPl.id]?.[hh];
+          const bS=netFor(bankPl.id,hh);
           if(bS==null)continue;
           others.forEach(op=>{
-            const oS=scores[op.id]?.[hh];
+            const oS=netFor(op.id,hh);
             if(oS==null)return;
             const diff=bS-oS; // neg = banker wins
             const amt=money?uval:1;
@@ -2729,8 +2793,8 @@ Svar KUN med JSON:
         for(let hh=1;hh<hole;hh++){
           const ph=hh<=6?0:hh<=12?1:2;
           const tA=PARTNERSHIPS[ph*2], tB=PARTNERSHIPS[ph*2+1];
-          const sA=tA.reduce((sum,id)=>{const s=scores[id]?.[hh];return s!=null?sum+s:null},0);
-          const sB=tB.reduce((sum,id)=>{const s=scores[id]?.[hh];return s!=null?sum+s:null},0);
+          const sA=tA.reduce((sum,id)=>{const s=netFor(id,hh);return s!=null?sum+s:null},0);
+          const sB=tB.reduce((sum,id)=>{const s=netFor(id,hh);return s!=null?sum+s:null},0);
           if(sA!=null&&sB!=null){
             if(sA<sB)teamScores.a+=money?uval:1;
             else if(sB<sA)teamScores.b+=money?uval:1;
