@@ -1024,7 +1024,21 @@ function App(){
   function handleImg(ev){
     const f=ev.target.files[0];if(!f)return;
     const r=new FileReader();
-    r.onload=e=>{const full=e.target.result;setIp(full);setIb(full.split(",")[1]);setIm(f.type);setAiR(null);};
+    r.onload=e=>{
+      // Nedskaler til maks 400px og re-kod som JPEG → ~30-60KB i stedet for fleire MB.
+      // Uten dette sprenger store mobil-bilder localStorage-grensa og profilen lagres aldri.
+      const img=new Image();
+      img.onload=()=>{
+        const MAX=400;let{width:w,height:h}=img;
+        if(w>h&&w>MAX){h=Math.round(h*MAX/w);w=MAX;}else if(h>MAX){w=Math.round(w*MAX/h);h=MAX;}
+        const c=document.createElement("canvas");c.width=w;c.height=h;
+        c.getContext("2d").drawImage(img,0,0,w,h);
+        let out;try{out=c.toDataURL("image/jpeg",0.82);}catch(_){out=e.target.result;}
+        setIp(out);setIb(out.split(",")[1]);setIm("image/jpeg");setAiR(null);
+      };
+      img.onerror=()=>{const full=e.target.result;setIp(full);setIb(full.split(",")[1]);setIm(f.type);setAiR(null);};
+      img.src=e.target.result;
+    };
     r.readAsDataURL(f);
   }
 
@@ -1106,7 +1120,10 @@ Svar KUN med JSON (ingen markdown):
 
   function saveProf(){
     const p={...pd,id:prof?.id||"u_"+Math.random().toString(36).slice(2,8),img:ip||prof?.img,hcp:parseFloat(pd.hcp)||18,weight:parseFloat(pd.weight)||80,height:parseFloat(pd.height)||178,isFemale:pd.gender==="kvinne",ageVerified:isOver18(pd.birthdate),birthdate:pd.birthdate||"",aiNick:aiR?.nickname||prof?.aiNick||"",aiReason:aiR?.reason||prof?.aiReason||"",aiAge:aiR?.age||prof?.aiAge||null,lang:lang};
-    setProf(p);setAged(isOver18(p.birthdate));sto(PK,p);
+    setProf(p);setAged(isOver18(p.birthdate));
+    // Robust lagring: ved quota-feil, dropp bildet så profildata uansett overlever
+    try{localStorage.setItem(PK,JSON.stringify(p));localStorage.setItem("sb_prof_backup",JSON.stringify(p));}
+    catch(_){try{const pNoImg={...p,img:null};localStorage.setItem(PK,JSON.stringify(pNoImg));localStorage.setItem("sb_prof_backup",JSON.stringify(pNoImg));}catch(__){}}
     // Save to cloud so profile survives re-downloads
     saveProfileCloud(p).then(uid=>{
       if(uid){
