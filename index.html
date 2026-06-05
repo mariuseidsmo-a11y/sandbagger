@@ -1105,7 +1105,7 @@ Svar KUN med JSON (ingen markdown):
       const txt=await callAI([{role:"user",content:[
         {type:"image",source:{type:"base64",media_type:mime,data:b64}},
         {type:"text",text:prompt}
-      ]}],700,"claude-sonnet-4-5");
+      ]}],400,"claude-haiku-4-5-20251001");
       const m=txt.match(/\{[\s\S]*\}/);
       if(!m)throw new Error("Ingen JSON i svar");
       const res=JSON.parse(m[0]);
