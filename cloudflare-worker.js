@@ -65,7 +65,7 @@ export default {
     }
 
     // Rate limiting per IP — bremser kostnads-misbruk av AI-proxyen sjølv om
-    // nokon hentar ut token+origin frå klienten. Krev [[ratelimit]]-binding i
+    // nokon hentar ut token+origin frå klienten. Krev AI_LIMITER-binding i
     // wrangler.toml. Guard: manglar bindinga, hoppar vi over (workeren funkar).
     if (env.AI_LIMITER) {
       const ip = request.headers.get("cf-connecting-ip") || "unknown";

@@ -5,7 +5,8 @@ compatibility_date = "2024-09-01"
 # Innebygd rate-limiting per IP (GA, alle planer). Bremser kostnads-misbruk
 # av AI-proxyen sjølv om nokon henter ut token+origin frå klienten.
 # period maa vere 10 eller 60 (sekund). namespace_id er eit valfritt unikt tal.
-[[ratelimit]]
+[[unsafe.bindings]]
 name = "AI_LIMITER"
+type = "ratelimit"
 namespace_id = "1001"
 simple = { limit = 30, period = 60 }
