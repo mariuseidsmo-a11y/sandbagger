@@ -213,6 +213,121 @@ button{cursor:pointer;font-family:'Inter',sans-serif;}
 .score-num{font-size:36px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;}
 ::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
 
+/* ── POLISH & MOTION LAYER ───────────────────────────────────────
+   Refined easing, entrance motion, focus & press feedback.
+   Builds on the Kapalua tokens — same dark + gold identity. */
+:root{
+  --ease:cubic-bezier(0.32,0.72,0,1);      /* smooth, faintly springy */
+  --ease-out:cubic-bezier(0.22,1,0.36,1);  /* decelerate-in */
+  --t-fast:0.14s;
+  --t-med:0.30s;
+}
+
+html{scroll-behavior:smooth;}
+body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;}
+
+/* Entrance motion — cards rise in softly when first mounted.
+   React reuses DOM nodes across re-renders, so this fires once per
+   mount (screen change / new list item), never on a data tick. */
+@keyframes sb-rise{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+@keyframes sb-fade{from{opacity:0;}to{opacity:1;}}
+
+.card{
+  animation:sb-rise var(--t-med) var(--ease-out) both;
+  transition:border-color var(--t-med) var(--ease),
+             box-shadow var(--t-med) var(--ease),
+             transform var(--t-fast) var(--ease);
+}
+/* Gentle stagger for sibling cards within a screen — degrades to
+   "all together" if the markup doesn't line up, which is fine. */
+.card:nth-child(2){animation-delay:0.04s;}
+.card:nth-child(3){animation-delay:0.08s;}
+.card:nth-child(4){animation-delay:0.12s;}
+.card:nth-child(5){animation-delay:0.16s;}
+.card:nth-child(n+6){animation-delay:0.2s;}
+
+/* Universal press feedback + smooth state colour changes for the
+   many inline-styled buttons throughout the app. */
+button{transition:transform var(--t-fast) var(--ease),
+                  border-color var(--t-fast) var(--ease),
+                  background-color var(--t-fast) var(--ease),
+                  color var(--t-fast) var(--ease),
+                  box-shadow var(--t-fast) var(--ease);}
+button:active{transform:scale(0.97);}
+button:disabled{transform:none;}
+
+/* Card used as a button — lift on hover, press in on tap */
+button.card:active{transform:scale(0.985);}
+
+/* Pointer-only hover affordances (no sticky :hover on touch) */
+@media (hover:hover){
+  .btn:hover{border-color:var(--border2);color:var(--text);}
+  .btnp:hover{transform:translateY(-1px);box-shadow:0 0 48px rgba(197,184,154,0.4),0 8px 22px rgba(0,0,0,0.45);}
+  .bsm:hover{border-color:var(--accent-border);color:var(--text);}
+  button.card:hover{border-color:var(--accent-border);transform:translateY(-1px);}
+  .btnback:hover{background:rgba(197,184,154,0.22);}
+}
+
+/* Primary button transition (was transition:all 0.1s linear) */
+.btnp{transition:transform var(--t-fast) var(--ease),box-shadow var(--t-med) var(--ease);}
+.btnp:active,.btn:active{transform:scale(0.98);}
+
+/* Touch targets — keep tap area comfortable (≥40–44px) */
+.bsm{min-height:44px;}
+.btnback{min-height:40px;padding:9px 18px;}
+
+/* Keyboard focus — visible accent ring, none for mouse/touch */
+button:focus-visible,a:focus-visible,[tabindex]:focus-visible,
+input:focus-visible,select:focus-visible,summary:focus-visible{
+  outline:2px solid var(--accent);outline-offset:2px;border-radius:8px;
+}
+button:focus:not(:focus-visible){outline:none;}
+
+/* Inputs — soft focus glow on top of the existing accent border */
+input:focus,select:focus{box-shadow:0 0 0 3px var(--accent-bg);}
+
+/* Screen-to-screen transition — a keyed remount per screen replays
+   this (the AnimatePresence effect, done with pure CSS). */
+@keyframes sb-screen-in{from{opacity:0;}to{opacity:1;}}
+.sb-screen{animation:sb-screen-in 0.26s var(--ease-out) both;}
+
+/* Spinner for async work */
+@keyframes sb-spin{to{transform:rotate(360deg);}}
+.sb-spinner{
+  display:inline-block;width:16px;height:16px;vertical-align:-3px;margin-right:8px;
+  border:2px solid var(--accent-border);border-top-color:var(--accent);
+  border-radius:50%;animation:sb-spin 0.7s linear infinite;
+}
+
+/* Skeleton shimmer — placeholder while data loads (no layout shift) */
+@keyframes sb-shimmer{from{background-position:200% 0;}to{background-position:-200% 0;}}
+.sb-skeleton{
+  border-radius:8px;
+  background:linear-gradient(100deg,var(--card-alt) 30%,rgba(197,184,154,0.12) 50%,var(--card-alt) 70%);
+  background-size:220% 100%;animation:sb-shimmer 1.3s ease-in-out infinite;
+}
+
+/* Score number pop — keyed on the value, so it replays on every change */
+@keyframes sb-pop{0%{transform:scale(0.55);opacity:0.3;}55%{transform:scale(1.14);}100%{transform:scale(1);opacity:1;}}
+.sb-score-pop{display:inline-block;animation:sb-pop 0.32s var(--ease-out);}
+
+/* Hole winner — soft gold breathing glow */
+@keyframes sb-glow{
+  0%,100%{box-shadow:0 0 0 1px var(--accent-border),0 0 13px rgba(197,184,154,0.10);}
+  50%{box-shadow:0 0 0 1px var(--accent-border),0 0 22px rgba(197,184,154,0.26);}
+}
+.sb-winner{animation:sb-glow 2.4s ease-in-out infinite;}
+
+/* Respect reduced-motion: kill entrance, Ken Burns, and smooth scroll */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:0.001ms!important;animation-iteration-count:1!important;
+    transition-duration:0.001ms!important;scroll-behavior:auto!important;
+  }
+  html{scroll-behavior:auto;}
+  .photo-bg img{animation:none!important;transform:scale(1.06)!important;}
+}
+
 /* Theme compat shims */
 
 
@@ -371,7 +486,7 @@ const GAMES={
   rule_change:{id:"rule_change",label:"Rule Change",tag:"morsom",short:"Ny absurd regel hvert hull — alle gjelder!",desc:"Hvert hull trekkes en ny absurd regel. Alle regler fra tidligere hull gjelder fortsatt! Ingen penger — bare kaos og latter."},
   banker:{id:"banker",label:"Banker",tag:"lag",short:"Én er Banker mot alle — roterer hvert hull",desc:"Bankeren spiller mot alle andre. Kan doble etter tee-shot. Banker vinner=betaling fra alle. Banker taper=betaler alle. Rollen roterer."},
   bingo:{id:"bingo",label:"Bingo Bango Bongo",tag:"poeng",short:"3 poeng per hull: grønn, nærmest pin, hole out",desc:"Tre poeng per hull: BINGO=første på grønn, BANGO=nærmest flagget når alle er på, BONGO=første til å hole out. Alle kan vinne uansett handicap!"},
-  joker:{id:"joker",label:"Joker Golf",tag:"morsom",short:"Matchplay med jokerkort — tving motstandere!",desc:"Matchplay der alle starter med 3 jokerkort. Spill kort strategisk: REPLAY tvinger en motstander til å slå på nytt, DOUBLE dobler hull-verdien, SHIELD beskytter ditt resultat, BOMB gjør birdie/par verdt dobbelt. Flest hull vinner runden!"},
+  joker:{id:"joker",label:"Joker Golf",tag:"morsom",short:"Matchplay med jokerkort — tving motstandere!",desc:"Matchplay der alle starter med 4 jokerkort. Spill kort strategisk: REPLAY tvinger en motstander til å slå på nytt, DOUBLE dobler hull-verdien, SHIELD beskytter ditt resultat, BOMB gjør birdie/par verdt dobbelt. Flest hull vinner runden!"},
 };
 
 // ── LANGUAGE ─────────────────────────────────────────────────────────────
@@ -734,7 +849,7 @@ function ProfForm({pd,setPd,ip,anl,aiR,handleImg,runAI,lang}){
             "🖼️ "+L("gallery"),h("input",{type:"file",accept:"image/*",onChange:handleImg,style:{display:"none"}}))
         ),
         !anl&&h("button",{onClick:runAI,style:{width:"100%",padding:"12px",fontSize:14,borderRadius:10,border:"1.5px solid var(--accent-border)",background:"var(--accent-bg)",color:"var(--accent)",fontWeight:700,cursor:"pointer",marginTop:4}},ip?"🤖 "+L("analyzeAI"):"🎲 Generer kallenavn"),
-        anl&&h("p",{style:{fontSize:14,color:"var(--accent)",margin:"10px 0 0",textAlign:"center",fontWeight:700}},"🤖 "+L("analyzing"))
+        anl&&h("p",{style:{fontSize:14,color:"var(--accent)",margin:"10px 0 0",textAlign:"center",fontWeight:700}},h("span",{className:"sb-spinner"}),L("analyzing"))
       )
     ),
     aiR&&h("div",{style:{marginTop:14,padding:14,background:"var(--accent-bg)",borderRadius:10,border:"1.5px solid var(--accent-border)"}},
@@ -1410,7 +1525,7 @@ Svar KUN med JSON (ingen markdown):
 
   // ProfForm is defined OUTSIDE App to prevent re-mount on every render (fixes keyboard focus bug)
 
-  if(scr==="loading")return h("div",{style:{minHeight:"100vh",position:"relative",overflow:"hidden",background:"#080808"}},
+  if(scr==="loading")return h("div",{className:"sb-screen",key:"s_loading",style:{minHeight:"100vh",position:"relative",overflow:"hidden",background:"#080808"}},
   h(PhotoBg,{screenKey:"splash"}),
   h("div",{style:{position:"relative",zIndex:1,minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:"0 20px 48px"}},
     h("div",{style:{marginBottom:8}},
@@ -1429,7 +1544,7 @@ Svar KUN med JSON (ingen markdown):
   )
 );
 
-  if(scr==="agecheck")return h("div",{style:{position:"relative",minHeight:"100vh",background:"var(--bg)"}},
+  if(scr==="agecheck")return h("div",{className:"sb-screen",key:"s_"+scr,style:{position:"relative",minHeight:"100vh",background:"var(--bg)"}},
     h(PhotoBg,{screenKey:"splash"}),
     h("div",{style:{position:"relative",zIndex:1,minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center",padding:"2rem 20px"}},
       h("p",{style:{fontSize:56,textAlign:"center",margin:"0 0 8px"}},"⛳"),
@@ -1449,7 +1564,7 @@ Svar KUN med JSON (ingen markdown):
     )
   )
 
-  if(scr==="createprofile")return h("div",{style:{position:"relative",minHeight:"100vh",background:"var(--bg)",padding:"1rem 0"}},
+  if(scr==="createprofile")return h("div",{className:"sb-screen",key:"s_"+scr,style:{position:"relative",minHeight:"100vh",background:"var(--bg)",padding:"1rem 0"}},
     h(PhotoBg,{screenKey:"spillere"}),
     h("div",{style:{position:"relative",zIndex:1,padding:"64px 20px 80px"}},
     h("p",{style:{fontSize:13,fontWeight:800,color:"var(--accent)",letterSpacing:"0.1em",margin:"0 0 4px",textTransform:"uppercase"}},"⛳ SANDBAGGER"),
@@ -1460,7 +1575,7 @@ Svar KUN med JSON (ingen markdown):
     )
   );
 
-  if(scr==="home")return h("div",{style:{position:"relative",minHeight:"100vh",background:"var(--bg)"}},
+  if(scr==="home")return h("div",{className:"sb-screen",key:"s_"+scr,style:{position:"relative",minHeight:"100vh",background:"var(--bg)"}},
     h(PhotoBg,{screenKey:"home"}),
     h("div",{style:{position:"relative",zIndex:1,padding:"1.5rem 1rem"}},
     h("p",{style:{fontSize:12,color:"var(--text3)",fontStyle:"italic",marginBottom:16,textAlign:"center",lineHeight:1.5}},getTagline()),
@@ -1497,7 +1612,7 @@ Svar KUN med JSON (ingen markdown):
   )
   );
 
-  if(scr==="minside")return h("div",{style:{position:"relative",minHeight:"100vh",background:"var(--bg)"}},
+  if(scr==="minside")return h("div",{className:"sb-screen",key:"s_"+scr,style:{position:"relative",minHeight:"100vh",background:"var(--bg)"}},
     h(PhotoBg,{screenKey:"ingame"}),
     h("div",{style:{position:"relative",zIndex:1,padding:"1rem 1rem"}},
     h("button",{className:"btnback",onClick:()=>setSc("home")},L("back")),
@@ -1540,7 +1655,7 @@ Svar KUN med JSON (ingen markdown):
   )
   );
 
-  if(scr==="joinroom")return h("div",{style:{position:"relative",minHeight:"100vh",background:"var(--bg)",padding:"1rem 0"}},
+  if(scr==="joinroom")return h("div",{className:"sb-screen",key:"s_"+scr,style:{position:"relative",minHeight:"100vh",background:"var(--bg)",padding:"1rem 0"}},
     h(PhotoBg,{screenKey:"home"}),
     h("div",{style:{position:"relative",zIndex:1,padding:"64px 20px 80px"}},
     h("button",{className:"btnback",onClick:()=>setSc("home")},L("back")),
@@ -1560,7 +1675,7 @@ rfState({...rd,players:allPlayers,scr:"game"});}},"Bli med")
 
   if(scr==="resume"&&saved){
     const ago=Math.round((Date.now()-(saved.savedAt||Date.now()))/60000);
-    return h("div",{style:{position:"relative",minHeight:"100vh",background:"var(--bg)"}},
+    return h("div",{className:"sb-screen",key:"s_"+scr,style:{position:"relative",minHeight:"100vh",background:"var(--bg)"}},
       h(PhotoBg,{screenKey:"home"}),
       h("div",{style:{position:"relative",zIndex:1,minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center",padding:"2rem 20px"}},
         h("p",{style:{fontSize:56,textAlign:"center",margin:"0 0 8px"}},"⛳"),
@@ -1581,7 +1696,7 @@ rfState({...rd,players:allPlayers,scr:"game"});}},"Bli med")
     );
   }
 
-  if(scr==="addplayer")return h("div",{style:{position:"relative",minHeight:"100vh",background:"var(--bg)",padding:"1rem 0"}},
+  if(scr==="addplayer")return h("div",{className:"sb-screen",key:"s_"+scr,style:{position:"relative",minHeight:"100vh",background:"var(--bg)",padding:"1rem 0"}},
     h(PhotoBg,{screenKey:"spillere"}),
     h("div",{style:{position:"relative",zIndex:1,padding:"64px 20px 80px"}},
     h("button",{className:"btnback",onClick:()=>{setIp(null);setIb(null);setAiR(null);setPd({name:"",hcp:"18",weight:"80",height:"178",gender:"mann"});setIsHost(true);setSc("setup");}},L("cancelBack")),
@@ -1603,7 +1718,7 @@ rfState({...rd,players:allPlayers,scr:"game"});}},"Bli med")
     const nxt=()=>setStep(s=>Math.min(STEPS.length-1,s+1));
     const bck=()=>{if(step===0)setSc("home");else setStep(s=>s-1);};
     const photoKeys=["spillere","spill","bonuser","ol","scorekort","klar"];
-    return h("div",{style:{position:"relative",minHeight:"100vh",background:"var(--bg)"}},
+    return h("div",{className:"sb-screen",key:"s_"+scr,style:{position:"relative",minHeight:"100vh",background:"var(--bg)"}},
       h(PhotoBg,{screenKey:photoKeys[step]||"spillere"}),
       h("div",{style:{position:"relative",zIndex:1,padding:"64px 20px 80px"}},
       h("button",{className:"btnback",onClick:bck},"← "+(step===0?"Hjem":"Tilbake")),
@@ -1647,6 +1762,7 @@ rfState({...rd,players:allPlayers,scr:"game"});}},"Bli med")
             const expanded=expandedGame===g.id;
             return h("div",{key:g.id,style:{marginBottom:8}},
               h("div",{
+                onClick:()=>setGid(sel?null:g.id),
                 style:{
                   borderRadius:expanded?"12px 12px 0 0":10,
                   padding:"12px 14px",
@@ -1657,7 +1773,7 @@ rfState({...rd,players:allPlayers,scr:"game"});}},"Bli med")
                   display:"flex",alignItems:"center",gap:8
                 }
               },
-                h("div",{style:{flex:1},onClick:()=>setGid(sel?null:g.id)},
+                h("div",{style:{flex:1}},
                   h("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:2}},
                     h("p",{style:{margin:0,fontWeight:700,fontSize:14,color:sel?"var(--accent)":"var(--text)"}},g.label),
                     h(GBadge,{tag:g.tag})
@@ -1674,7 +1790,6 @@ rfState({...rd,players:allPlayers,scr:"game"});}},"Bli med")
                   }
                 },expanded?"▲":"ℹ️"),
                 h("div",{
-                  onClick:()=>setGid(sel?null:g.id),
                   style:{
                     width:24,height:24,borderRadius:6,flexShrink:0,cursor:"pointer",
                     border:"1.5px solid "+(sel?"var(--accent)":"var(--border2)"),
@@ -1905,7 +2020,11 @@ Svar KUN med JSON:
             }catch(e){alert("Feil: "+e.message);}
             setScanLoading(false);
           },className:"btn btnp",style:{marginTop:0}},"🤖 Analyser scorekort med AI"),
-          scanLoading&&h("p",{style:{fontSize:14,color:"var(--accent)",textAlign:"center",fontWeight:700,margin:"10px 0"}},"🤖 AI leser scorekortet..."),
+          scanLoading&&h("div",{style:{margin:"10px 0"}},
+            h("p",{style:{fontSize:14,color:"var(--accent)",textAlign:"center",fontWeight:700,margin:"0 0 10px"}},h("span",{className:"sb-spinner"}),"🤖 AI leser scorekortet..."),
+            h("div",{style:{display:"grid",gridTemplateColumns:"repeat(9,1fr)",gap:4,marginBottom:6}},Array.from({length:9},(_,i)=>h("div",{key:i,className:"sb-skeleton",style:{height:34,animationDelay:(i*0.08)+"s"}}))),
+            h("div",{className:"sb-skeleton",style:{height:14,width:"60%",margin:"0 auto"}})
+          ),
           scanResult&&h("div",{style:{marginTop:10,padding:12,background:"var(--bg3)",borderRadius:10,border:"1.5px solid var(--accent-border)"}},
             h("p",{style:{fontSize:15,fontWeight:800,color:"var(--accent)",marginBottom:6}},"✅ "+(scanResult.courseName||"Bane lastet!")),
             scanResult.tees&&h("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginBottom:6}},
@@ -2013,7 +2132,7 @@ Svar KUN med JSON:
            {l:"Hull",v:hc},{l:"Spill",v:gObj?.label||"Kun bonuser/straffer"},
            {l:"HCP-modus",v:HCP_MODES.find(m=>m.id===hmode)?.label||hmode},
            {l:"Pengespill",v:money?uval+"kr/poeng":"Av"},{l:"Øl-modus",v:beer?"På":"Av"}
-          ].map(({l,v})=>h("div",{key:l,style:{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #f0f0f0",fontSize:14}},
+          ].map(({l,v})=>h("div",{key:l,style:{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid var(--border)",fontSize:14}},
             h("span",{style:{color:"#6a7098",fontWeight:600}},l),h("span",{style:{fontWeight:700,maxWidth:"60%",textAlign:"right"}},v)
           ))
         ),
@@ -2029,7 +2148,7 @@ Svar KUN med JSON:
     const mT=moneyT();const debts=[];const t2={...mT};
     const ms=[...players].sort((a,b)=>(t2[b.id]||0)-(t2[a.id]||0));
     ms.filter(p=>t2[p.id]>0).forEach(w=>ms.filter(p=>t2[p.id]<0).forEach(l=>{if(t2[w.id]>0&&t2[l.id]<0){const amt=Math.min(t2[w.id],-t2[l.id]);if(amt>0){debts.push({from:l.name,to:w.name,amt});t2[w.id]-=amt;t2[l.id]+=amt;}}}));
-    return h("div",{style:{position:"relative",minHeight:"100vh",background:"var(--bg)"}},
+    return h("div",{className:"sb-screen",key:"s_"+scr,style:{position:"relative",minHeight:"100vh",background:"var(--bg)"}},
       h(PhotoBg,{screenKey:"summary"}),
       h("div",{style:{position:"relative",zIndex:1,padding:"64px 20px 60px"}},
         h("div",{style:{textAlign:"center",marginBottom:24}},
@@ -2146,7 +2265,7 @@ Svar KUN med JSON:
         return h("div",{className:"card ci"},
           h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}},h("p",{style:{fontSize:13,fontWeight:800,letterSpacing:1.2,color:"#4d9fff",margin:0}},"STABLEFORD"),infoBtn),
           info,
-          sorted.map((p,i)=>{const pts=sfTot(p),hPts=sfFor(p,hole);return h("div",{key:p.id,style:{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:i<sorted.length-1?"1px solid #c5e0f8":"none"}},
+          sorted.map((p,i)=>{const pts=sfTot(p),hPts=sfFor(p,hole);return h("div",{key:p.id,style:{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:i<sorted.length-1?"1px solid var(--blue-border)":"none"}},
             h("span",{style:{fontSize:14,minWidth:22}},i===0?"🏆":i===1?"🥈":i===2?"🥉":""),
             h(Av,{p,sz:28}),
             h("p",{style:{margin:0,flex:1,fontSize:13,fontWeight:700}},p.name.split(" ")[0]),
@@ -2236,7 +2355,7 @@ Svar KUN med JSON:
               h("p",{style:{fontSize:11,color:pot>1?"var(--gold)":"var(--blue)",opacity:0.9,margin:"2px 0 0",fontWeight:pot>1?800:400}},"🎯 Pot: "+(pot||0)+" poeng · Hull "+hole+(money?" · "+(pot*(uval||1))+"kr i potten":""))
             ),infoBtn),
           info,
-          sorted.map((p,i)=>h("div",{key:p.id,style:{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:i<sorted.length-1?"1px solid #c5e0f8":"none"}},
+          sorted.map((p,i)=>h("div",{key:p.id,style:{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:i<sorted.length-1?"1px solid var(--blue-border)":"none"}},
             h(Av,{p,sz:28}),h("p",{style:{margin:0,flex:1,fontSize:13,fontWeight:700}},p.name.split(" ")[0]),h("div",null,h("p",{style:{margin:0,fontSize:18,fontWeight:800,color:"var(--blue)"}},(skinMap[p.id]||0)+" skins"),money&&h("p",{style:{margin:0,fontSize:13,color:"var(--gold)",fontWeight:700}},(skinMap[p.id]||0)*uval+"kr"))
           )),
           hMin!=null&&h("div",{style:{marginTop:8,padding:8,background:"#0a1a3a",borderRadius:8,fontSize:13,fontWeight:600,color:"#4d9fff"}},
@@ -2596,6 +2715,7 @@ Svar KUN med JSON:
             )
           ),
           maxSC!=null&&maxSC===minSC&&h("p",{style:{color:"var(--muted)",fontSize:13,marginBottom:10}},"🤝 Alle likt — ingen betaling"),
+          maxSC!=null&&maxSC!==minSC&&(curLosers.length>1||curWinners.length>1)&&h("p",{style:{color:"var(--gold)",fontSize:12,marginBottom:10,fontWeight:600,lineHeight:1.4}},"🤝 Flere delt på "+(curLosers.length>1&&curWinners.length>1?"høyest og lavest":curLosers.length>1?"høyest":"lavest")+" — ingen betaling dette hullet (kun rein topp mot rein bunn betaler)"),
           h("div",{style:{background:"#080c18",borderRadius:8,padding:"10px 12px"}},
             h("p",{style:{fontSize:10,color:"var(--blue)",fontWeight:800,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.08em"}},"Saldo"),
             players.slice().sort((a,b)=>hlMoney[b.id]-hlMoney[a.id]).map((p,i)=>
@@ -2736,7 +2856,9 @@ Svar KUN med JSON:
         const others=players.filter(p=>p.id!==bankPl.id);
         // Calculate: bank vs each opponent per hole
         const bankResults=[];
-        for(let hh=1;hh<hole;hh++){
+        // Tell ALLE spilte hull (inkl. inneværende) — samme spenn som gameT()
+        // sin banker-utregning, så panel-saldoen matcher penge-chipsene på score-korta.
+        for(let hh=1;hh<=hc;hh++){
           const bS=netFor(bankPl.id,hh);
           if(bS==null)continue;
           others.forEach(op=>{
@@ -2853,7 +2975,44 @@ Svar KUN med JSON:
         );
       }
 
-      // ── GENERIC fallback (scramble etc) ────────────────────────────────
+      // ── SCRAMBLE (beste-ball lag) ───────────────────────────────────────
+      if(gid==="scramble"){
+        const parOf=hh=>hp[String(hh)]||HOLE_PARS[hh]||4;
+        const teams=players.length===4
+          ?[{name:"Lag A",col:"var(--blue)",bg:"rgba(90,143,184,0.12)",bd:"rgba(90,143,184,0.3)",members:[players[0],players[1]]},
+            {name:"Lag B",col:"var(--red)",bg:"rgba(201,84,68,0.12)",bd:"rgba(201,84,68,0.3)",members:[players[2],players[3]]}]
+          :[{name:"Laget",col:"var(--accent)",bg:"var(--accent-bg)",bd:"var(--accent-border)",members:players}];
+        const calc=mem=>{let tot=0,parTot=0,cnt=0;for(let hh=1;hh<=hc;hh++){const vals=mem.map(p=>netFor(p.id,hh)).filter(v=>v!=null);if(!vals.length)continue;tot+=Math.min(...vals);parTot+=parOf(hh);cnt++;}return{tot,parTot,cnt,rel:tot-parTot};};
+        const curBest=mem=>{const vals=mem.map(p=>netFor(p.id,hole)).filter(v=>v!=null);return vals.length?Math.min(...vals):null;};
+        const relStr=r=>r===0?"E":r>0?"+"+r:""+r;
+        const relCol=r=>r<0?"var(--green)":r>0?"var(--red)":"var(--muted)";
+        const td=teams.map(t=>Object.assign({},t,calc(t.members),{cur:curBest(t.members)}));
+        let lead=null;
+        if(td.length>1&&(td[0].cnt>0||td[1].cnt>0)){
+          if(td[0].rel<td[1].rel)lead=td[0];else if(td[1].rel<td[0].rel)lead=td[1];
+        }
+        return h("div",{className:"card ci"},
+          h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
+            h("p",{style:{fontSize:11,fontWeight:800,color:"var(--blue)",margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}},"🏌️ SCRAMBLE — Hull "+hole),infoBtn),
+          info,
+          h("p",{style:{fontSize:12,color:"var(--muted)",marginBottom:10,lineHeight:1.4}},"Beste (laveste) ball per hull teller for laget. Lavest total mot par vinner. Hver spiller logger sitt slag — appen velger den beste."),
+          h("div",{style:{display:"grid",gridTemplateColumns:td.length>1?"1fr 1fr":"1fr",gap:8,marginBottom:lead!=null||td.length>1?12:0}},
+            td.map(t=>h("div",{key:t.name,style:{background:t.bg,borderRadius:10,padding:"10px 12px",border:"1px solid "+t.bd}},
+              h("p",{style:{fontSize:10,color:t.col,fontWeight:800,marginBottom:4,textTransform:"uppercase",letterSpacing:"0.08em"}},t.name),
+              h("p",{style:{fontSize:13,fontWeight:700,color:"#fff",margin:"0 0 6px"}},t.members.map(p=>p.name.split(" ")[0]).join(" + ")||"—"),
+              h("div",{style:{display:"flex",alignItems:"baseline",gap:6,flexWrap:"wrap"}},
+                h("span",{style:{fontSize:22,fontWeight:900,color:t.col}},t.cnt>0?t.tot:"—"),
+                t.cnt>0&&h("span",{style:{fontSize:12,fontWeight:700,color:relCol(t.rel)}},relStr(t.rel)+" (par "+t.parTot+")")
+              ),
+              h("p",{style:{fontSize:11,color:"var(--muted)",margin:"4px 0 0"}},"Hull "+hole+": "+(t.cur!=null?t.cur+" slag (beste)":"—"))
+            ))
+          ),
+          lead&&h("div",{style:{padding:8,background:"var(--blue-bg)",borderRadius:8,fontSize:13,fontWeight:700,color:"var(--blue)"}},"🏆 "+lead.name+" leder med "+Math.abs(td[0].rel-td[1].rel)+" slag"),
+          td.length>1&&!lead&&(td[0].cnt>0||td[1].cnt>0)&&h("div",{style:{padding:8,background:"var(--blue-bg)",borderRadius:8,fontSize:13,fontWeight:700,color:"var(--blue)"}},"🤝 Likt mellom lagene")
+        );
+      }
+
+      // ── GENERIC fallback ───────────────────────────────────────────────
       return h("div",{className:"card ci"},
         h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}},h("p",{style:{fontSize:13,fontWeight:800,letterSpacing:1.2,color:"#4d9fff",margin:0}},gObj.label.toUpperCase()),infoBtn),
         info,
@@ -2862,7 +3021,7 @@ Svar KUN med JSON:
       );
     }
 
-    return h("div",{style:{position:"relative",minHeight:"100vh",background:"var(--bg)"}},
+    return h("div",{className:"sb-screen",key:"s_"+scr,style:{position:"relative",minHeight:"100vh",background:"var(--bg)"}},
       h(PhotoBg,{screenKey:"ingame"}),
       h("div",{style:{position:"relative",zIndex:1,padding:"0 0 4rem"}},
       // TOP BAR
@@ -2874,7 +3033,7 @@ Svar KUN med JSON:
           })
         ),
         h("div",{style:{display:"flex",alignItems:"center",gap:6,padding:"0 4px"}},
-          h("button",{onClick:()=>setHole(x=>Math.max(1,x-1)),disabled:hole===1,style:{width:48,height:48,flexShrink:0,fontSize:22,borderRadius:10,border:"1.5px solid #ccc",background:"var(--bg3)",color:hole===1?"#2e3248":"#c8ccee",cursor:hole===1?"default":"pointer"}},"‹"),
+          h("button",{onClick:()=>setHole(x=>Math.max(1,x-1)),disabled:hole===1,style:{width:48,height:48,flexShrink:0,fontSize:22,borderRadius:10,border:"1.5px solid var(--border2)",background:"var(--bg3)",color:hole===1?"#2e3248":"#c8ccee",cursor:hole===1?"default":"pointer"}},"‹"),
           h("div",{style:{flex:1,textAlign:"center"}},
             h("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:8}},
               h("p",{style:{margin:0,fontSize:22,fontWeight:900}},"Hull "+hole),
@@ -2882,7 +3041,7 @@ Svar KUN med JSON:
             ),
             gObj&&h("p",{style:{margin:0,fontSize:11,color:"#5a6080",fontWeight:600}},gObj.label)
           ),
-          h("button",{onClick:()=>setHole(x=>Math.min(hc,x+1)),disabled:hole===hc,style:{width:48,height:48,flexShrink:0,fontSize:22,borderRadius:10,border:"1.5px solid #ccc",background:"var(--bg3)",color:hole===hc?"#2e3248":"#c8ccee",cursor:hole===hc?"default":"pointer"}},"›"),
+          h("button",{onClick:()=>setHole(x=>Math.min(hc,x+1)),disabled:hole===hc,style:{width:48,height:48,flexShrink:0,fontSize:22,borderRadius:10,border:"1.5px solid var(--border2)",background:"var(--bg3)",color:hole===hc?"#2e3248":"#c8ccee",cursor:hole===hc?"default":"pointer"}},"›"),
           h("button",{onClick:()=>{setSset(!sset);setShowPar(false);},style:{width:48,height:48,flexShrink:0,fontSize:18,borderRadius:10,border:"1.5px solid "+(sset?"#4d9fff":"#2e3248"),background:sset?"#0a1a3a":"var(--bg3)",cursor:"pointer"}},"⚙")
         )
       ),
@@ -2934,7 +3093,7 @@ Svar KUN med JSON:
           const bacVal=bacOf(p);
           const isWin=hWin&&hWin.id===p.id;
           const isTied_=tied&&hWins.find(x=>x.p.id===p.id);
-          return h("div",{key:p.id,style:{padding:"10px 0",borderBottom:"1px solid #f0f0f0",background:isWin?"#0a1e15":isTied_?"#080f28":"transparent",borderRadius:8,paddingLeft:isWin||isTied_?8:0,marginBottom:2}},
+          return h("div",{key:p.id,className:isWin?"sb-winner":null,style:{borderBottom:"1px solid var(--border)",background:isWin?"#0a1e15":isTied_?"#080f28":"transparent",borderRadius:8,padding:isWin||isTied_?"10px 10px":"10px 0",marginBottom:2}},
             h("div",{style:{display:"flex",alignItems:"center",gap:10}},
               h(Av,{p,sz:38}),
               h("div",{style:{flex:1}},
@@ -2954,12 +3113,12 @@ Svar KUN med JSON:
                 )
               ),
               h("div",{style:{display:"flex",alignItems:"center",gap:8}},
-                h("button",{onClick:()=>addScore(p.id,hole,-1),style:{width:38,height:38,borderRadius:"50%",border:"1.5px solid #ccc",background:"var(--bg3)",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",color:"#c8ccee",flexShrink:0,cursor:"pointer"}},"−"),
+                h("button",{onClick:()=>addScore(p.id,hole,-1),style:{width:38,height:38,borderRadius:"50%",border:"1.5px solid var(--border2)",background:"var(--bg3)",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",color:"#c8ccee",flexShrink:0,cursor:"pointer"}},"−"),
                 h("div",{style:{textAlign:"center",minWidth:34}},
-                  h("p",{style:{margin:0,fontSize:38,fontWeight:900,color:s?(isWin?"var(--accent)":isTied_?"#4d9fff":"#f0f2ff"):"#2e3248"}},s||"—"),
+                  h("p",{key:"sc_"+(s||0),className:s?"sb-score-pop":null,style:{margin:0,fontSize:38,fontWeight:900,color:s?(isWin?"var(--accent)":isTied_?"#4d9fff":"#f0f2ff"):"#2e3248"}},s||"—"),
                   isSF&&pts!=null&&h("p",{style:{margin:0,fontSize:11,color:"#4d9fff",fontWeight:700}},pts+"p")
                 ),
-                h("button",{onClick:()=>addScore(p.id,hole,1),style:{width:38,height:38,borderRadius:"50%",border:"1.5px solid #ccc",background:"var(--bg3)",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",color:"#c8ccee",flexShrink:0,cursor:"pointer"}},"+")
+                h("button",{onClick:()=>addScore(p.id,hole,1),style:{width:38,height:38,borderRadius:"50%",border:"1.5px solid var(--border2)",background:"var(--bg3)",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",color:"#c8ccee",flexShrink:0,cursor:"pointer"}},"+")
               )
             )
           );
@@ -2971,7 +3130,7 @@ Svar KUN med JSON:
         players.map(p=>{
           const b=bacOf(p);
           const extra=bacX(b); // same for both beer modes — always positive bonus
-          return h("div",{key:p.id,style:{padding:"8px 0",borderBottom:"1px solid #ffe8a0"}},
+          return h("div",{key:p.id,style:{padding:"8px 0",borderBottom:"1px solid var(--amber-border)"}},
             h("div",{style:{display:"flex",alignItems:"center",gap:8,marginBottom:8}},
               h(Av,{p,sz:30}),
               h("div",{style:{flex:1}},
