@@ -1,0 +1,8 @@
+# Lokal Claude Code / preview-konfig
+.claude/
+
+# Cloudflare Wrangler build-cache
+.wrangler/
+
+# Lokal sikkerhetskopi av appen (ikke en del av Pages-siden)
+index.backup.html
