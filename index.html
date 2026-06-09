@@ -833,6 +833,19 @@ function isOver18(dateStr){
   return age>=18;
 }
 
+// ── Samtykke & ansvarsfraskrivelser ─────────────────────────────────────
+const BEER_CONSENT_KEY="sb_consent_beer", AI_CONSENT_KEY="sb_consent_ai";
+function hasConsent(k){try{return localStorage.getItem(k)==="1";}catch(e){return false;}}
+function setConsent(k){try{localStorage.setItem(k,"1");}catch(e){}}
+const BEER_DISCLAIMER="🍺 Øl-modus & promille\n\nPromille-estimatet er KUN for moro. Det er et grovt anslag (Widmark-formelen) og kan være langt unna din faktiske promille.\n\nBruk det ALDRI til å vurdere om du kan kjøre, hvor mye du kan drikke, eller andre beslutninger om helse eller sikkerhet. Kjør aldri i påvirket tilstand.\n\nTrykk OK for å bekrefte at du forstår og godtar dette.";
+const AI_CONSENT_TEXT="🤖 AI-bildeanalyse — personvern\n\nFor å lage kallenavnet sendes bildet ditt til Anthropic (Claude AI) for analyse. Bildet brukes kun der og da og lagres ikke permanent av appen.\n\nTrykk OK for å sende bildet, eller Avbryt for å droppe AI-kallenavnet (du får da et tilfeldig i stedet).";
+// Krever eksplisitt samtykke første gang. Returnerer true om brukeren kan fortsette.
+function ensureConsent(key,text){
+  if(hasConsent(key))return true;
+  if(typeof window!=="undefined"&&window.confirm(text)){setConsent(key);return true;}
+  return false;
+}
+
 // ── ProfForm: defined OUTSIDE App to preserve input focus ───────────────
 function ProfForm({pd,setPd,ip,anl,aiR,handleImg,runAI,lang}){
   function L(key){return (LANG[lang]||LANG.no)[key]||key;}
@@ -847,6 +860,7 @@ function ProfForm({pd,setPd,ip,anl,aiR,handleImg,runAI,lang}){
             "🖼️ "+L("gallery"),h("input",{type:"file",accept:"image/*",onChange:handleImg,style:{display:"none"}}))
         ),
         !anl&&h("button",{onClick:runAI,style:{width:"100%",padding:"12px",fontSize:14,borderRadius:10,border:"1.5px solid var(--accent-border)",background:"var(--accent-bg)",color:"var(--accent)",fontWeight:700,cursor:"pointer",marginTop:4}},ip?"🤖 "+L("analyzeAI"):"🎲 Generer kallenavn"),
+        ip&&!anl&&h("p",{style:{fontSize:10,color:"var(--text3)",margin:"6px 2px 0",lineHeight:1.4}},"🔒 Bildet sendes til Anthropic (AI) for analyse og lagres ikke. Du blir spurt før det sendes."),
         anl&&h("p",{style:{fontSize:14,color:"var(--accent)",margin:"10px 0 0",textAlign:"center",fontWeight:700}},h("span",{className:"sb-spinner"}),L("analyzing"))
       )
     ),
@@ -1166,6 +1180,8 @@ function App(){
     const b64=ib||(ip&&ip.indexOf(",")>-1?ip.split(",")[1]:null);
     const mime=im||(ip&&ip.indexOf("data:")===0&&ip.indexOf(";")>-1?ip.substring(5,ip.indexOf(";")):"image/jpeg");
     if(!b64){setAiR(randomNick(pd.name));return;}
+    // Personvern: bildet sendes til tredjepart (Anthropic) — krev samtykke.
+    if(!ensureConsent(AI_CONSENT_KEY,AI_CONSENT_TEXT)){setAiR(randomNick(pd.name));return;}
     setAnl(true);
     try{
       const prompt=(lang==="en"?"CRITICAL: Respond in ENGLISH — the nickname and the reason MUST be written in English (keep it punchy and funny).\n\n":"")+`Du er Sandbagger-roasteren — en hardtslående norsk golfkommentator som lager BRUTALT MORSOMME kallenavn til golfere basert på hvordan de SER UT på bildet.
@@ -1649,6 +1665,18 @@ Svar KUN med JSON (ingen markdown):
         h("button",{style:{flex:1,padding:"11px",fontSize:13,fontWeight:700,borderRadius:8,border:"1.5px solid var(--accent-border)",background:"var(--accent-bg)",color:"var(--accent)",cursor:"pointer"},onClick:()=>{try{const data={},pf=["golf_","sb_","sandbagger","room_"];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&pf.some(p=>k.indexOf(p)===0))data[k]=localStorage.getItem(k);}const blob=new Blob([JSON.stringify(data)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="sandbagger-backup.json";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}catch(e){alert("Eksport feilet: "+e.message);}}},"⬇ Eksporter"),
         h("button",{style:{flex:1,padding:"11px",fontSize:13,fontWeight:700,borderRadius:8,border:"1.5px solid var(--border2)",background:"var(--bg3)",color:"var(--text)",cursor:"pointer"},onClick:()=>{const inp=document.createElement("input");inp.type="file";inp.accept="application/json,.json";inp.onchange=ev=>{const f=ev.target.files&&ev.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const data=JSON.parse(rd.result);if(!data||typeof data!=="object")throw new Error("Ugyldig fil");let n=0;Object.keys(data).forEach(k=>{try{localStorage.setItem(k,data[k]);n++;}catch(_){}});alert("Gjenopprettet "+n+" elementer. Appen lastes på nytt.");location.reload();}catch(err){alert("Import feilet: "+err.message);}};rd.readAsText(f);};inp.click();}},"⬆ Importer")
       )
+    ),
+    h("div",{className:"card",style:{marginTop:8}},
+      h("p",{style:{fontSize:13,fontWeight:700,margin:"0 0 8px"}},"📜 Vilkår, personvern & ansvar"),
+      h("details",{style:{marginTop:0}},
+        h("summary",{style:{fontSize:12,color:"var(--accent)",cursor:"pointer",fontWeight:600,listStyle:"none",padding:"6px 0"}},"🍺 Øl-modus & promille — ansvarsfraskrivelse"),
+        h("p",{style:{fontSize:12,color:"var(--muted)",lineHeight:1.5,margin:"4px 0 8px"}},"Promille-estimatet i øl-modus er KUN for moro. Det bruker Widmark-formelen og er et grovt anslag som kan være langt unna din faktiske promille. Bruk det ALDRI til å vurdere om du kan kjøre, hvor mye du kan drikke, eller andre beslutninger om helse eller sikkerhet. Kjør aldri i påvirket tilstand. Du må bekrefte at du forstår dette første gang du slår på øl-modus.")
+      ),
+      h("details",{style:{marginTop:0,borderTop:"1px solid var(--border)",paddingTop:6}},
+        h("summary",{style:{fontSize:12,color:"var(--accent)",cursor:"pointer",fontWeight:600,listStyle:"none",padding:"6px 0"}},"🤖 AI-bildeanalyse — personvern"),
+        h("p",{style:{fontSize:12,color:"var(--muted)",lineHeight:1.5,margin:"4px 0 8px"}},"Når du lager et AI-kallenavn fra et bilde, sendes bildet til Anthropic (Claude AI) for analyse. Bildet brukes kun der og da og lagres ikke permanent av appen. Du blir spurt om samtykke før bildet sendes første gang. Velger du å ikke sende bildet, får du et tilfeldig kallenavn i stedet.")
+      ),
+      h("p",{style:{fontSize:11,color:"var(--text3)",margin:"8px 0 0",lineHeight:1.4,borderTop:"1px solid var(--border)",paddingTop:8}},"Sandbagger er et hobbyprosjekt laget for moro skyld. Bruk på eget ansvar.")
     )
   )
   );
@@ -1879,6 +1907,7 @@ rfState({...rd,players:allPlayers,scr:"game"});}},"Bli med")
             h("button",{
               onClick:()=>{
                 const on=!beer;
+                if(on&&!ensureConsent(BEER_CONSENT_KEY,BEER_DISCLAIMER))return;
                 setBeer(on);
                 if(on)setHmode(hmode==="stableford"?"stableford_beer":"stroke_beer");
                 else setHmode(hmode==="stableford_beer"?"stableford":"stroke");
@@ -3074,7 +3103,7 @@ Svar KUN med JSON:
         h("p",{style:{fontSize:14,fontWeight:800,margin:"0 0 10px"}},"⚙️ Innstillinger"),
         h("div",{style:{display:"flex",flexDirection:"column",gap:10}},
           h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},h("p",{style:{margin:0,fontSize:14,fontWeight:600}},"💰 Pengespill"),h("button",{onClick:()=>setMoney(!money),className:"bsm "+(money?"bon":"")},money?"✓ På":"Av")),
-          aged&&h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},h("p",{style:{margin:0,fontSize:14,fontWeight:600}},"🍺 Øl-modus"),h("button",{onClick:()=>setBeer(!beer),className:"bsm "+(beer?"bwa":"")},beer?"✓ På":"Av")),
+          aged&&h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},h("p",{style:{margin:0,fontSize:14,fontWeight:600}},"🍺 Øl-modus"),h("button",{onClick:()=>{const on=!beer;if(on&&!ensureConsent(BEER_CONSENT_KEY,BEER_DISCLAIMER))return;setBeer(on);},className:"bsm "+(beer?"bwa":"")},beer?"✓ På":"Av")),
           h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},h("p",{style:{margin:0,fontSize:14,fontWeight:600}},"🐍 Slangen"),h("button",{onClick:()=>setSnake(!snake),className:"bsm "+(snake?"bon":"")},snake?"✓ På":"Av"))
         )
       ),
