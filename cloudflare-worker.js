@@ -7,16 +7,18 @@
  *   • Bane-detalj        GET  /course/{id}           → golfcourseapi.com
  *
  * Beskyttelse (gjelder ALLE ruter):
- *  1) Origin-allowlist  → kun forespørsler fra din egen app slipper gjennom.
- *  2) Delt token        → X-App-Token må matche APP_TOKEN.
+ *  1) Rate limiting     → maks 30 req/min per IP (AI_LIMITER-binding).
+ *  2) Origin-allowlist  → kun forespørsler fra din egen app slipper gjennom.
+ *  3) Delt token        → X-App-Token må matche APP_TOKEN.
+ *  4) Modell-allowlist + max_tokens-tak → ingen kan be om dyre modeller.
  *
  * VIKTIG oppsett i Cloudflare (Settings → Variables → legg inn som Secret):
  *  - ANTHROPIC_API_KEY  → din Anthropic-nøkkel. ALDRI hardkod den her.
  *  - APP_TOKEN          → tilfeldig streng, må matche klienten.
  *  - COURSE_API_KEY     → gratis nøkkel fra golfcourseapi.com (e-postregistrering).
  *
- * Anbefalt i tillegg: slå på en "Rate limiting"-regel i Cloudflare-dashbordet
- * (Security → WAF → Rate limiting rules), f.eks. maks 30 requests / minutt per IP.
+ * Rate limiting ligg no i koden via AI_LIMITER-bindinga (sjå wrangler.toml).
+ * Etter endring her: køyr `wrangler deploy` for å rulle ut.
  */
 
 // Tillatte origins. Legg til din faktiske domene-URL her.
@@ -60,6 +62,17 @@ export default {
     // Preflight
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: cors });
+    }
+
+    // Rate limiting per IP — bremser kostnads-misbruk av AI-proxyen sjølv om
+    // nokon hentar ut token+origin frå klienten. Krev [[ratelimit]]-binding i
+    // wrangler.toml. Guard: manglar bindinga, hoppar vi over (workeren funkar).
+    if (env.AI_LIMITER) {
+      const ip = request.headers.get("cf-connecting-ip") || "unknown";
+      const { success } = await env.AI_LIMITER.limit({ key: ip });
+      if (!success) {
+        return json({ error: "For mange forespørsler — vent eit minutt." }, 429, cors);
+      }
     }
 
     // Felles beskyttelse for alle ruter
