@@ -6,3 +6,10 @@
 
 # Lokal sikkerhetskopi av appen (ikke en del av Pages-siden)
 index.backup.html
+
+# Personlege arbeidsnotat (skal IKKJE i det offentlege repoet)
+claude-inspo-reels.md
+personvern-sletting.md
+
+# Logo-konsept-skisser (lokale, ikkje del av appen)
+logo-concepts/
