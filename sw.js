@@ -1,12 +1,12 @@
 /* Sandbagger service worker — gjør appen installerbar + offline-tålig.
    Bump CACHE-versjonen når du vil tvinge ny app-shell-cache. */
-const CACHE = 'sandbagger-v2';
+const CACHE = 'sandbagger-v3';
 const SHELL = [
   '/',
   '/index.html',
   '/manifest.json',
   '/icon-192.png',
-  '/icon-512.png',
+  '/icon-192.webp',
   '/apple-touch-icon.png',
   '/bg/splash.jpeg',
 ];
