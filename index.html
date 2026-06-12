@@ -394,6 +394,10 @@ const EN2={
 "Widmark-formelen beregner promillen din fra vekt, kjønn og tid. Promillen du har NÅR du spiller hullet gir ekstra slag PÅ det hullet — og låses når scoren føres.":"The Widmark formula estimates your BAC from weight, gender and time. The BAC you have WHEN you play a hole gives extra strokes ON that hole — locked in when the score is entered.",
 "Under 0.2‰ → +0 slag":"Under 0.2‰ → +0 strokes","0.2–0.7‰ → +1 slag/hull":"0.2–0.7‰ → +1 stroke/hole","0.7–1.2‰ → +2 slag/hull":"0.7–1.2‰ → +2 strokes/hole","1.2‰+ → +3 slag/hull (maks)":"1.2‰+ → +3 strokes/hole (max)",
 "🍺 Under 0.2‰ — ingen ekstra slag ennå":"🍺 Under 0.2‰ — no extra strokes yet",
+"Ett veddemål på 9 hull: flest vunne hull vinner.":"One bet over 9 holes: most holes won wins.",
+"⚠️ Nines krever minst 3 spillere":"⚠️ Nines requires at least 3 players",
+"9 poeng fordeles mellom 3–4 spillere per hull. Med færre deles ingen poeng — velg et annet spill, eller legg til flere spillere.":"9 points are split between 3–4 players per hole. With fewer, no points are awarded — pick another game or add more players.",
+"⚠️ Scratch-modus: kun promille-sporing — ingen ekstra slag (rå slag teller).":"⚠️ Scratch mode: BAC tracking only — no extra strokes (raw strokes count).",
 "Edru":"Sober","Oppvarming":"Warming up","I god form":"In good form","Vibe-sjekk ⚠️":"Vibe check ⚠️","19. hull nok 🚨":"19th hole o'clock 🚨",
 "Skriv inn banenavn først.":"Enter a course name first.",
 "Banen mangler handicapindeks per hull — fyll inn eller skann først, ellers blir netto/penger feil.":"The course is missing a handicap index per hole — fill it in or scan first, otherwise net/money will be wrong.",
@@ -591,6 +595,7 @@ function tr(s){
   r=r.replace(/Fylles automatisk ved skann/g,"Filled in automatically when scanning");
   r=r.replace(/\+(\d+) promille-slag/g,"+$1 BAC strokes");
   r=r.replace(/ ekstra slag PER HULL akkurat nå/g," extra strokes PER HOLE right now");
+  r=r.replace(/(\d+) hull vunnet/g,"$1 holes won");
   return r;
 }
 const h=function(){
@@ -1015,6 +1020,10 @@ async function syncLoad(rc){
     return await r.json();
   }catch(e){return null;}
 }
+// Eigne romnoeklar for gjest→vert-synk (syncSave strippar sjoelv ulovlege teikn).
+// "R" = roster (kven har joina), "G<pid>" = gjesten sin eigen delstate.
+function syncGuestKey(rc,pid){return (rc||"")+"G"+String(pid||"").toUpperCase();}
+function syncRosterKey(rc){return (rc||"")+"R0STER";}
 
 // ── Delt norsk bane-DB (crowdsourcet via skann) ─────────────────────────
 // Lagres i kvdb under én felles nøkkel. Skanner én person en bane, får alle den.
@@ -1227,7 +1236,8 @@ function App(){
   });},[]);
   // Joker state
   const [jokerCards,setJokerCards]=useState({});
-  const [bankerIdx,setBankerIdx]=useState(0);      // which player is banker per hole
+  const [bankerIdx,setBankerIdx]=useState(0);      // gjeldande/neste banker (peikar)
+  const [bankerHoles,setBankerHoles]=useState({}); // {hull: pid} — banker FRYSAST per hull ved foerste score (elles omskreiv banker-bytte heile rundens pengehistorikk)
   const [sixesTeams,setSixesTeams]=useState({});   // {hole: {a:[id,id], b:[id,id]}}
   const [bingoClaims,setBingoClaims]=useState({}); // {hole: {bingo:pid, bango:pid, bongo:pid}} // {pid: ["replay","double","shield","bomb",...]}
   const [jokerActive,setJokerActive]=useState(null); // {pid, card, targetPid}
@@ -1305,7 +1315,9 @@ function App(){
         setSaved(s);
         // AUTO-RESUME: var vi midt i en runde da appen lukket? Hopp rett inn!
         if(s.scr==="game"&&prof_){
-          setIsHost(true);
+          // Gjenopprett rolla fraa lagra state — ein GJEST som reloader skal
+          // IKKJE bli host (begynte foer aa broadcaste sin state over vertens)
+          setIsHost(s.isHost!==false);
           rfState({...s,scr:"game"});
           return; // skip splash helt
         }
@@ -1324,25 +1336,45 @@ function App(){
 
   useEffect(()=>{
     if(scr!=="game"&&scr!=="setup")return;
-    const state={scr,step,players,gid,hmode,abon,apen,money,uval,beer,hc,hp,hi,hole,scores,ht,hd,sh,drks,rc,snake,wolfIdx,wolfPar,wolfLone,wolfHoles,bankerIdx,rcDifficulty,sixesTeams,bingoClaims,jokerCards,courseName,courseSlope,courseCR,playerTees,savedAt:Date.now()};
+    const state={scr,step,players,gid,hmode,abon,apen,money,uval,beer,hc,hp,hi,hole,scores,ht,hd,sh,drks,rc,snake,wolfIdx,wolfPar,wolfLone,wolfHoles,bankerIdx,bankerHoles,rcDifficulty,rcRules,rcOverrides,sixesTeams,bingoClaims,jokerCards,preRoundDrinks,isHost,courseName,courseSlope,courseCR,playerTees,savedAt:Date.now()};
     sto(SK,state);
     // If host: broadcast to room
     if(isHost&&rc&&scr==="game"){
       setSyncStatus("syncing");
       syncSave(rc,state).then(()=>setSyncStatus("ok")).catch(()=>setSyncStatus("offline"));
     }
-  },[scr,step,players,scores,hd,hole,drks,sh,gid,money,beer,abon,apen,snake,hp,hmode,wolfIdx,wolfPar,wolfLone]);
+  },[scr,step,players,scores,ht,hd,hole,drks,sh,gid,money,uval,beer,abon,apen,snake,hp,hi,hc,rc,hmode,wolfIdx,wolfPar,wolfLone,wolfHoles,bankerIdx,bankerHoles,rcDifficulty,rcRules,rcOverrides,sixesTeams,bingoClaims,jokerCards,preRoundDrinks,isHost,courseName,courseSlope,courseCR,playerTees]);
 
-  // Guests: poll for updates every 4 seconds
+  // Pre-runde-drinkar: stempl eit FAST tidspunkt (time) naar minsAgo vert sett/endra.
+  // units-endringar beheld ankeret. Utan dette dreiv drinken i tid (alltid "X min
+  // sidan NAA") og braut ht-tidslaasen for spelte hull.
+  useEffect(()=>{
+    let changed=false;const next={...preRoundDrinks};
+    Object.keys(next).forEach(pid=>{
+      const v=next[pid];if(!v)return;
+      if(v.time==null||v._mins!==v.minsAgo){
+        next[pid]={...v,time:Date.now()-(v.minsAgo||60)*60000,_mins:v.minsAgo};changed=true;
+      }
+    });
+    if(changed)setPreRoundDrinks(next);
+  },[preRoundDrinks]);
+
+  // Gjest: poll verten kvart 4. sekund
+  const lastHostHole=React.useRef(null);
   useEffect(()=>{
     if(scr!=="game"||isHost||!rc)return;
     const poll=setInterval(async()=>{
       const rd=await syncLoad(rc);
       if(!rd||!rd.players)return;
-      // Merge: keep own player's scores, take others from host
+      // Spelarliste fraa verten — men soerg for at vi sjoelve er med
+      setPlayers(prev=>{
+        const hostList=rd.players||[];
+        if(prof&&!hostList.some(p=>p.id===prof.id))return[...hostList,prof];
+        return hostList;
+      });
+      // Scores/drinkar/pre-runde: verten sitt, men behald VAARE eigne redigeringar
       setScores(prev=>{
         const merged={...rd.scores};
-        // Keep our own player's score edits
         if(prof){merged[prof.id]=prev[prof.id]||rd.scores?.[prof.id]||{};}
         return merged;
       });
@@ -1351,10 +1383,82 @@ function App(){
         if(prof)merged[prof.id]=prev[prof.id]||rd.drks?.[prof.id]||[];
         return merged;
       });
+      setPreRoundDrinks(prev=>{
+        const merged={...(rd.preRoundDrinks||{})};
+        if(prof&&prev[prof.id])merged[prof.id]=prev[prof.id];
+        return merged;
+      });
       // Hull-tidsstempel fraa verten — laaser promille-slag likt hos alle
       if(rd.ht)setHt(prev=>({...rd.ht,...prev}));
-      setHole(rd.hole||1);
+      // Spillmodus-state er VERT-autoritativt. Foer saag gjester aldri Wolf-val,
+      // banker-byte, bingo-claims, jokerkort, sixes-lag, regelbyte, bonusar/
+      // straffer eller innstillingsendringar — permanent feil stilling.
+      if(rd.wolfHoles)setWolfHoles(rd.wolfHoles);
+      if(rd.bankerIdx!=null)setBankerIdx(rd.bankerIdx);
+      if(rd.bankerHoles)setBankerHoles(rd.bankerHoles);
+      if(rd.sixesTeams)setSixesTeams(rd.sixesTeams);
+      if(rd.bingoClaims)setBingoClaims(rd.bingoClaims);
+      if(rd.jokerCards)setJokerCards(rd.jokerCards);
+      if(rd.rcOverrides)setRcOverrides(rd.rcOverrides);
+      if(Array.isArray(rd.rcRules)&&rd.rcRules.length)setRcRules(rd.rcRules);
+      if(rd.hd)setHd(rd.hd);
+      if(rd.sh!==undefined)setSh(rd.sh);
+      if(rd.snake!=null)setSnake(rd.snake);
+      if(rd.money!=null)setMoney(rd.money);
+      if(rd.uval!=null)setUval(rd.uval);
+      if(rd.beer!=null)setBeer(rd.beer);
+      if(rd.hmode)setHmode(rd.hmode);
+      if(rd.hp)setHp(rd.hp);
+      if(rd.hi)setHi(rd.hi);
+      if(rd.hc)setHc(rd.hc);
+      // Hull: foelg verten KUN naar verten faktisk byter hull — foer vart
+      // gjesten tvinga tilbake kvart 4. sekund og kunne ikkje bla fritt.
+      const hh=rd.hole||1;
+      if(lastHostHole.current!==hh){lastHostHole.current=hh;setHole(hh);}
       setSyncStatus("ok");
+    },4000);
+    return ()=>clearInterval(poll);
+  },[scr,isHost,rc]);
+
+  // Gjest → vert: push eigne scores/drinkar til ein eigen romnoekkel (debounced).
+  // Foer var synken EINVEGS — gjesters scorer naadde aldri verten i det heile.
+  useEffect(()=>{
+    if(scr!=="game"||isHost||!rc||!prof)return;
+    const t=setTimeout(()=>{
+      const me=players.find(p=>p.id===prof.id)||prof;
+      syncSave(syncGuestKey(rc,prof.id),{
+        pid:prof.id,name:me.name,
+        player:{...me,img:null}, // utan bilete (kvdb-storleik); avatar fell tilbake til initial
+        scores:scores[prof.id]||{},drks:drks[prof.id]||[],
+        pre:preRoundDrinks[prof.id]||null,at:Date.now()
+      });
+    },800);
+    return ()=>clearTimeout(t);
+  },[scr,isHost,rc,scores,drks,preRoundDrinks,players]);
+
+  // Vert: poll gjestenoeklane kvart 4. sekund og merge inn gjestens eigne data
+  // (gjest-autoritativt for deira eigen pid). Vertens save-effect broadcaster
+  // deretter den merga staten til alle.
+  useEffect(()=>{
+    if(scr!=="game"||!isHost||!rc)return;
+    const poll=setInterval(async()=>{
+      const roster=await syncLoad(syncRosterKey(rc));
+      if(!roster)return;
+      const ids=Object.keys(roster).filter(k=>k!=="syncAt"&&k!==prof?.id);
+      for(const pid of ids){
+        const g=await syncLoad(syncGuestKey(rc,pid));
+        if(!g||!g.pid)continue;
+        // Ny gjest vi ikkje har? Legg til i spelarlista (maks 4)
+        if(g.player)setPlayers(prev=>prev.some(p=>p.id===g.pid)||prev.length>=4?prev:[...prev,{hcp:18,weight:80,height:178,gender:"mann",isFemale:false,...g.player}]);
+        setScores(prev=>{
+          const own=prev[g.pid]||{};
+          const theirs=g.scores||{};
+          // gjesten eig sin eigen score — men ikkje slett noko verten har foert for dei
+          return{...prev,[g.pid]:{...own,...theirs}};
+        });
+        if(Array.isArray(g.drks))setDrks(prev=>({...prev,[g.pid]:g.drks}));
+        if(g.pre)setPreRoundDrinks(prev=>({...prev,[g.pid]:g.pre}));
+      }
     },4000);
     return ()=>clearInterval(poll);
   },[scr,isHost,rc]);
@@ -1367,6 +1471,14 @@ function App(){
     setRc(s.rc||"");setSnake(s.snake||false);setWolfIdx(s.wolfIdx||0);
     setWolfPar(s.wolfPar||null);setWolfLone(s.wolfLone||false);
     setStep(s.step||0);setSc(s.scr||"game");if(s.wolfHoles)setWolfHoles(s.wolfHoles||{});if(s.rcDifficulty)setRcDifficulty(s.rcDifficulty||"mix");if(s.bankerIdx!=null)setBankerIdx(s.bankerIdx||0);if(s.sixesTeams)setSixesTeams(s.sixesTeams||{});if(s.bingoClaims)setBingoClaims(s.bingoClaims||{});if(s.jokerCards)setJokerCards(s.jokerCards||{});if(s.courseName)setCourseName(s.courseName);if(s.courseSlope)setCourseSlope(s.courseSlope);if(s.courseCR)setCourseCR(s.courseCR);if(s.playerTees)setPlayerTees(s.playerTees);
+    if(s.bankerHoles)setBankerHoles(s.bankerHoles);
+    if(s.preRoundDrinks)setPreRoundDrinks(s.preRoundDrinks);
+    if(s.rcOverrides)setRcOverrides(s.rcOverrides);
+    // Same regelrekkefoelgje paa alle einingar + etter reload (foer: restokka per mount,
+    // saa reglane for ALLEREIE SPELTE hull endra seg)
+    if(Array.isArray(s.rcRules)&&s.rcRules.length)setRcRules(s.rcRules);
+    // MERK: isHost vert IKKJE sett her — rfState vert ogsaa brukt ved join
+    // (gjest tek imot vertens objekt der isHost=true). Resume set den separat.
   }
 
   function handleImg(ev){
@@ -1489,9 +1601,12 @@ Svar KUN med JSON (ingen markdown):
   function bacOf(p,asOf){
     const pre=preRoundDrinks[p.id];
     let drinks=[...(drks[p.id]||[])];
-    // Add pre-round drinks as ONE batch at the pre-round time
+    // Pre-runde-drinkar som EITT inntak paa eit FAST tidspunkt. pre.time vert
+    // stempla naar brukaren redigerer. Den gamle utrekninga (now-minsAgo ved
+    // kvar render) DREIV i tid: drinken eldast aldri, og naar preTime passerte
+    // ht-laasen til eit spelt hull forsvann promillen retroaktivt derfraa.
     if(pre&&pre.units>0){
-      const preTime=Date.now()-(pre.minsAgo||60)*60000;
+      const preTime=pre.time!=null?pre.time:Date.now()-(pre.minsAgo||60)*60000;
       drinks.push({units:pre.units,time:preTime});
     }
     return wid(drinks,p.weight||80,p.isFemale,asOf);
@@ -1504,11 +1619,20 @@ Svar KUN med JSON (ingen markdown):
     if(!isBeerMode)return 0;
     return beerSlag(bacOf(p,ht[String(h_)]||undefined));
   }
+  // hi-verdiane re-rangerast til 0..hc-1 blant dei SPELTE hulla. Spelar ein
+  // 9 hull paa ein 18-holsbane har hulla hi-verdiar spreidd i 1..18, og
+  // hcpH (som deler ut ekstra slag til idx < hcp%hc) mista slag i hol-rommet.
+  const hiRank=(()=>{
+    const arr=[];for(let i=1;i<=hc;i++)arr.push([i,hi[String(i)]||i]);
+    arr.sort((a,b)=>a[1]-b[1]);
+    const m={};arr.forEach(([hh],rank)=>{m[hh]=rank;});
+    return m;
+  })();
   // Totale handicap-slag paa eitt hull = vanleg HCP-fordeling + promille-bonus.
   // EIN felles funksjon saa scorekort, stableford, netto/pengespel og WHS-cap
   // alltid er einige.
   function holeStrokes(p,h_){
-    const base=hcpH(Math.round(effHcp(p)),(hi[String(h_)]?hi[String(h_)]-1:h_-1),hc);
+    const base=hcpH(Math.round(effHcp(p)),(hiRank[h_]!=null?hiRank[h_]:h_-1),hc);
     return base+beerSlagFor(p,h_);
   }
   function effHcp(p){
@@ -1541,7 +1665,26 @@ Svar KUN med JSON (ingen markdown):
     // Foerste score paa hullet: laas tidspunktet, saa promille-bonusen for
     // hullet vert rekna fraa promillen DAA hullet vart spelt.
     setHt(prev=>prev[String(h_)]?prev:{...prev,[String(h_)]:Date.now()});
+    // Banker: frys kven som er banker paa hullet ved foerste score —
+    // seinare banker-byte skal ikkje omskrive historikken.
+    if(gid==="banker"){
+      const bId=players[bankerIdx%players.length]?.id;
+      if(bId)setBankerHoles(prev=>prev[String(h_)]?prev:{...prev,[String(h_)]:bId});
+    }
     setScores(s=>{const cur=s[pid]?.[h_]||3;return{...s,[pid]:{...(s[pid]||{}),[h_]:Math.max(1,cur+d)}};});
+  }
+  // Banker for eit gitt hull: frosen verdi om den finst, elles gjeldande peikar
+  function bankerFor(hh){
+    return bankerHoles[String(hh)]||players[bankerIdx%players.length]?.id||null;
+  }
+  // Nullstill ALT runde-state ved ny runde — inkl. ht/bankerHoles/preRoundDrinks
+  // (gamle tidslaaser ville elles gitt feil promille-slag i neste runde)
+  function resetRound(){
+    setScores({});setHt({});setHd({});setHole(1);setDrks({});setSh(null);
+    setWolfIdx(0);setWolfPar(null);setWolfLone(false);setWolfHoles({});
+    setBankerIdx(0);setBankerHoles({});setSixesTeams({});setBingoClaims({});
+    setJokerCards({});setPreRoundDrinks({});setRcOverrides({});setRcRerolls({});
+    setRcRules(shuf(RULE_CHANGE));
   }
   function addDrink(pid,units){setDrks(d=>({...d,[pid]:[...(d[pid]||[]),{units,time:Date.now()}]}));}
   // Tar i bruk en bane (allerede mappet til {name,cr,slope,hp,hi,hc}) + cacher den lokalt
@@ -1581,7 +1724,19 @@ Svar KUN med JSON (ingen markdown):
     if(!Object.keys(m.hi).length){if(!confirm(tr("Denne banen mangler handicapindeks per hull — netto/penger blir feil. Bruke den likevel?")))return;}
     useCourse(m);
   }
-  function recEv(pid,eid,isB){const key=hole+"-"+pid+"-"+eid;setHd(d=>{if(d[key]){const n={...d};delete n[key];return n;}return{...d,[key]:{pid,eid,isB,hole,value:isB?uval:-uval}};});if(eid==="three_putt")setSh(pid);}
+  function recEv(pid,eid,isB){
+    const key=hole+"-"+pid+"-"+eid;
+    const n={...hd};
+    if(n[key])delete n[key];else n[key]={pid,eid,isB,hole,value:isB?uval:-uval};
+    setHd(n);
+    // Slangen: re-deriver holderen fraa gjenvaerande 3-putt-hendingar (siste hull vinn).
+    // Foer vart sh sett UBETINGA — ogsaa naar ein ANGRA ein feilregistrert 3-putt,
+    // slik at feil spelar betalte slangen.
+    if(eid==="three_putt"){
+      const tp=Object.values(n).filter(e=>e&&e.eid==="three_putt").sort((a,b)=>(a.hole||0)-(b.hole||0));
+      setSh(tp.length?tp[tp.length-1].pid:null);
+    }
+  }
   function hasEv(pid,eid){return!!(hd[hole+"-"+pid+"-"+eid]);}
   // AI-generert Rule Change-regel — ferske, originale regler tilpasset vanskelighetsgrad
   function setNewRule(nr){setRcOverrides(prev=>({...prev,[hole]:nr}));setRcRerolls(prev=>({...prev,[hole]:[]}));}
@@ -1694,9 +1849,16 @@ Svar KUN med JSON (ingen markdown):
       return t;
     }
     if(gid==="banker"){
-      const bankPl=players[bankerIdx%players.length];
-      const others=players.filter(p=>p.id!==bankPl.id);
-      for(let hh=1;hh<=hc;hh++){const bS=netFor(bankPl.id,hh);if(bS==null)continue;others.forEach(op=>{const oS=netFor(op.id,hh);if(oS==null)return;if(bS<oS){t[bankPl.id]+=bet;t[op.id]-=bet;}else if(bS>oS){t[bankPl.id]-=bet;t[op.id]+=bet;}});}
+      // Banker per HULL (frosen ved score) — ikkje gjeldande banker for alle hull
+      for(let hh=1;hh<=hc;hh++){
+        const bId=bankerFor(hh);if(!bId||t[bId]===undefined)continue;
+        const bS=netFor(bId,hh);if(bS==null)continue;
+        players.filter(p=>p.id!==bId).forEach(op=>{
+          const oS=netFor(op.id,hh);if(oS==null)return;
+          if(bS<oS){t[bId]+=bet;t[op.id]-=bet;}
+          else if(bS>oS){t[bId]-=bet;t[op.id]+=bet;}
+        });
+      }
       return t;
     }
     if(gid==="bingo"){
@@ -1845,7 +2007,7 @@ Svar KUN med JSON (ingen markdown):
         h("p",{style:{margin:"2px 0 0",fontSize:12,color:"#8890a0"}},(lang==="en"?"Name, handicap and a funny AI nickname":"Navn, handicap og et morsomt AI-kallenavn"))
       )
     ),
-    saved&&saved.players&&saved.players.length>0&&h("button",{className:"card ci",style:{textAlign:"left",cursor:"pointer",width:"100%",marginBottom:16,border:"1.5px solid var(--accent)"},onClick:()=>{rfState(saved);}},
+    saved&&saved.players&&saved.players.length>0&&h("button",{className:"card ci",style:{textAlign:"left",cursor:"pointer",width:"100%",marginBottom:16,border:"1.5px solid var(--accent)"},onClick:()=>{setIsHost(saved.isHost!==false);rfState(saved);}},
       h("p",{style:{margin:"0 0 4px",fontWeight:800,fontSize:16,color:"var(--accent)"}},(lang==="en"?"▶ Resume round":"▶ Fortsett runde")),
       h("p",{style:{margin:0,fontSize:13,color:"#c4bca8"}},(saved.players.length)+(lang==="en"?" players · hole ":" spillere · hull ")+(saved.hole||1))
     ),
@@ -1854,8 +2016,7 @@ Svar KUN med JSON (ingen markdown):
       h("button",{className:"card ci",style:{textAlign:"left",cursor:"pointer"},onClick:()=>{
         const ps=prof?[prof]:[];setPlayers(ps);setStep(0);
         const _A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let code="SAND-";for(let _i=0;_i<5;_i++)code+=_A[Math.floor(Math.random()*_A.length)];setRc(code);setIsHost(true);
-        setScores({});setHd({});setHole(1);setDrks({});setSh(null);
-        setWolfIdx(0);setWolfPar(null);setWolfLone(false);setWolfHoles({});setIsHost(true);setSc("setup");
+        resetRound();setSc("setup");
       }},h("p",{style:{margin:"0 0 4px",fontWeight:800,fontSize:16,color:"var(--text)"}},L("startRound")),h("p",{style:{margin:0,fontSize:13,color:"#aeb6d4"}},L("startRoundDesc"))),
       h("button",{className:"card cs",style:{textAlign:"left",cursor:"pointer"},onClick:()=>setSc("joinroom")},h("p",{style:{margin:"0 0 4px",fontWeight:800,fontSize:16,color:"var(--accent)"}},L("joinRound")),h("p",{style:{margin:0,fontSize:13,color:"#c4bca8"}},L("joinRoundDesc")))
     )
@@ -1931,6 +2092,9 @@ setIsHost(false);
 // Add yourself to players if not already there
 const existingIds=(rd.players||[]).map(p=>p.id);
 const allPlayers=prof&&!existingIds.includes(prof.id)?[...( rd.players||[]),prof]:(rd.players||[]);
+// Registrer oss i rommets roster slik at VERTEN veit at vi finst og kan
+// polle vaar gjestenoekkel (toveis-synk)
+if(prof){try{const roster=(await syncLoad(syncRosterKey(code)))||{};if(!roster[prof.id]){roster[prof.id]=prof.name||"Gjest";delete roster.syncAt;syncSave(syncRosterKey(code),roster);}}catch(e){}}
 rfState({...rd,players:allPlayers,scr:"game"});}},"Bli med")
     )
   );
@@ -1948,10 +2112,10 @@ rfState({...rd,players:allPlayers,scr:"game"});}},"Bli med")
           h("p",{style:{fontSize:12,color:"var(--muted)",margin:0}},"Hull "+(saved.hole||1)+" av "+(saved.hc||18)+" · "+(saved.gid?Object.values({wolf:"Wolf",nassau:"Nassau",skins:"Skins",rabbit:"Rabbit",nines:"Nines",high_low:"High-Low",banker:"Banker",bingo:"Bingo Bango Bongo",joker:"Joker Golf",rule_change:"Rule Change",sixes:"Sixes",scramble:"Scramble"})[Object.keys({wolf:"Wolf",nassau:"Nassau",skins:"Skins",rabbit:"Rabbit",nines:"Nines",high_low:"High-Low",banker:"Banker",bingo:"Bingo Bango Bongo",joker:"Joker Golf",rule_change:"Rule Change",sixes:"Sixes",scramble:"Scramble"}).indexOf(saved.gid)]||saved.gid:"Fri runde"))
         ),
         h("button",{className:"btn btnp",style:{marginBottom:12},onClick:()=>{
-          setIsHost(true);
+          setIsHost(saved.isHost!==false);
           rfState({...saved,scr:"game"});
         }},"▶ Fortsett runde"),
-        h("button",{onClick:()=>{del_(SK);setSaved(null);setIsHost(true);setSc("setup");},
+        h("button",{onClick:()=>{del_(SK);setSaved(null);setIsHost(true);resetRound();setSc("setup");},
           style:{background:"none",border:"none",color:"var(--muted)",fontSize:13,cursor:"pointer",textAlign:"center",width:"100%",padding:"8px"}
         },"Start ny / Hent runde med kode")
       )
@@ -2145,8 +2309,9 @@ rfState({...rd,players:allPlayers,scr:"game"});}},"Bli med")
                 const on=!beer;
                 if(on&&!ensureConsent(BEER_CONSENT_KEY,BEER_DISCLAIMER))return;
                 setBeer(on);
-                if(on)setHmode(hmode==="stableford"?"stableford_beer":"stroke_beer");
-                else setHmode(hmode==="stableford_beer"?"stableford":"stroke");
+                // Bevar scratch — berre stableford/stroke har beer-variantar
+                if(on)setHmode(hmode==="stableford"?"stableford_beer":hmode==="stroke"?"stroke_beer":hmode);
+                else setHmode(hmode==="stableford_beer"?"stableford":hmode==="stroke_beer"?"stroke":hmode);
               },
               className:"bsm "+(beer?"bsc":""),
               style:{minWidth:70,padding:"10px 16px"}
@@ -2157,6 +2322,7 @@ rfState({...rd,players:allPlayers,scr:"game"});}},"Bli med")
         // Explanation when ON
         aged&&beer&&h("div",{className:"card cw",style:{marginBottom:12}},
           h("p",{style:{fontSize:13,fontWeight:800,color:"var(--gold)",marginBottom:4}},"🍺 Slik funker promille-slagene:"),
+          hmode==="scratch"&&h("p",{style:{fontSize:11,fontWeight:700,color:"var(--red)",marginBottom:8,lineHeight:1.4}},"⚠️ Scratch-modus: kun promille-sporing — ingen ekstra slag (rå slag teller)."),
           h("p",{style:{fontSize:12,color:"var(--muted)",marginBottom:10,lineHeight:1.5}},"Widmark-formelen beregner promillen din fra vekt, kjønn og tid. Promillen du har NÅR du spiller hullet gir ekstra slag PÅ det hullet — og låses når scoren føres."),
           h("p",{style:{fontSize:11,fontWeight:700,color:"var(--muted)",marginBottom:6,textAlign:"center"}},"‰ = promille (alkohol i blodet, IKKE prosent)"),
           h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}},
@@ -2494,7 +2660,7 @@ Svar KUN med JSON:
               h("p",{style:{fontSize:10,color:"var(--muted)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",margin:0}},"Totale enheter")
             )
           ),
-          players.sort((a,b)=>bacOf(b)-bacOf(a)).map(p=>h("div",{key:p.id,style:{display:"flex",justifyContent:"space-between",fontSize:13,padding:"4px 0"}},
+          [...players].sort((a,b)=>bacOf(b)-bacOf(a)).map(p=>h("div",{key:p.id,style:{display:"flex",justifyContent:"space-between",fontSize:13,padding:"4px 0"}},
             h("span",{style:{color:"var(--text)",fontWeight:600}},p.name.split(" ")[0]),
             h("span",{style:{color:"var(--gold)",fontWeight:700}},bacOf(p).toFixed(2)+"‰ · "+(drks[p.id]||[]).reduce((t,d)=>t+d.units,0).toFixed(1)+" enh")
           ))
@@ -2504,9 +2670,13 @@ Svar KUN med JSON:
           const winner=allS[0];
           const myResult=allS.find(x=>x.p.id===prof?.id);
           const entry={date:new Date().toLocaleDateString("no-NO"),dateTs:Date.now(),course:courseName||"Ukjent bane",game:gObj?.label||"Fri runde",holes:hc,players:players.map(p=>p.name.split(" ")[0]).join(", "),winner:winner?.p.name.split(" ")[0],myScore:myResult?(isSF?myResult.sf+"p":myResult.net+" netto"):null,myBrutto:myResult?myResult.total:null,isSF};
-          const newH=[entry,...history].slice(0,20);
-          setHistory(newH);try{localStorage.setItem("golf_history",JSON.stringify(newH));}catch(e){}
-          await del_(SK);setPlayers([]);setScores({});setHd({});setHole(1);setGid(null);setRc("");setHp({});setDrks({});setSc("home");
+          // Guard mot dobbel-tap: ikkje lagre to identiske oppfoeringar rett etter kvarandre
+          const dup=history[0]&&history[0].players===entry.players&&history[0].course===entry.course&&(entry.dateTs-(history[0].dateTs||0))<60000;
+          if(!dup){
+            const newH=[entry,...history].slice(0,20);
+            setHistory(newH);try{localStorage.setItem("golf_history",JSON.stringify(newH));}catch(e){}
+          }
+          await del_(SK);setPlayers([]);setGid(null);setRc("");setHp({});resetRound();setSc("home");
         }},L("backToStart"))
       )
     );
@@ -2559,17 +2729,21 @@ Svar KUN med JSON:
           return{winner:sorted[0][0],tied:false};
         }
         const bet=money?uval:1;
-        const f9=nassauPeriodScore(1,9);
-        const b9=nassauPeriodScore(10,18);
-        const tot=nassauPeriodScore(1,18);
+        // SAME periodar som gameT: 9-holsrunde = EITT veddemaal (1..hc),
+        // elles fremre 9 / bakre (10..hc) / totalt (1..hc). Panelet var foer
+        // hardkoda til 10-18 og dobbelttalde paa 9-holsrundar.
+        const periodDone=(from,to_)=>{for(let hh=from;hh<=to_;hh++){if(!players.every(p=>scores[p.id]?.[hh]!=null))return false;}return true;};
+        const PERIODS=hc<=9
+          ?[["Totalt",nassauPeriodScore(1,hc),periodDone(1,hc)]]
+          :[["Fremre 9",nassauPeriodScore(1,9),periodDone(1,9)||hole>9],[" Bakre 9",nassauPeriodScore(10,hc),periodDone(10,hc)],["Totalt",nassauPeriodScore(1,hc),periodDone(1,hc)]];
         const nassauMoney={};players.forEach(p=>nassauMoney[p.id]=0);
-        [[f9],[b9],[tot]].forEach(([res])=>{
+        PERIODS.forEach(([,res])=>{
           if(res&&res.winner){
             nassauMoney[res.winner]+=bet*(players.length-1);
             players.filter(p=>p.id!==res.winner).forEach(p=>nassauMoney[p.id]-=bet);
           }
         });
-        const period=hole<=9?"🏌️ Fremre 9":"🏌️ Bakre 9";
+        const period=hc<=9?"🏌️ 9 hull":hole<=9?"🏌️ Fremre 9":"🏌️ Bakre 9";
         return h("div",{className:"card ci"},
           h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
             h("div",null,
@@ -2579,9 +2753,9 @@ Svar KUN med JSON:
             infoBtn
           ),
           info,
-          h("p",{style:{fontSize:12,color:"var(--muted)",marginBottom:10,lineHeight:1.4}},"3 veddemål: Fremre 9, Bakre 9 og Totalt. Flest hull vunnet i perioden vinner."),
-          h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:10}},
-            [["Fremre 9",f9,hole>9],[" Bakre 9",b9,hole>18],["Totalt",tot,hole>18]].map(([label,res,done])=>
+          h("p",{style:{fontSize:12,color:"var(--muted)",marginBottom:10,lineHeight:1.4}},hc<=9?"Ett veddemål på 9 hull: flest vunne hull vinner.":"3 veddemål: Fremre 9, Bakre 9 og Totalt. Flest hull vunnet i perioden vinner."),
+          h("div",{style:{display:"grid",gridTemplateColumns:PERIODS.length===1?"1fr":"1fr 1fr 1fr",gap:6,marginBottom:10}},
+            PERIODS.map(([label,res,done])=>
               h("div",{key:label,style:{textAlign:"center",padding:"8px 4px",borderRadius:8,
                 background:done?(res&&res.tied?"rgba(212,169,97,0.1)":res&&res.winner?"rgba(90,143,184,0.15)":"rgba(8,8,8,0.4)"):"rgba(8,8,8,0.4)",
                 border:"1px solid "+(done&&res?(res.tied?"var(--amber-border)":"var(--blue-border)"):"var(--border)")}},
@@ -2609,17 +2783,18 @@ Svar KUN med JSON:
       }
 
       if(gid==="skins"){
+        const skinKr=gameT(); // SAME kjelde som penge-chips/summary — panelet viste foer skins*uval (feil ved >2 spelarar)
         const skinMap={};players.forEach(p=>skinMap[p.id]=0);let pot=1;
         for(let hh=1;hh<hole;hh++){const hs=players.map(p=>({id:p.id,s:netFor(p.id,hh)})).filter(x=>x.s!=null);if(hs.length<players.length){continue;}const mn=Math.min(...hs.map(x=>x.s));const ws=hs.filter(x=>x.s===mn);if(ws.length===1){skinMap[ws[0].id]+=pot;pot=1;}else pot++;}
         const sorted=[...players].sort((a,b)=>(skinMap[b.id]||0)-(skinMap[a.id]||0));
         return h("div",{className:"card ci"},
           h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}},h("div",null,
               h("p",{style:{fontSize:13,fontWeight:800,color:"var(--blue)",margin:0}},"SKINS 🏆"),
-              h("p",{style:{fontSize:11,color:pot>1?"var(--gold)":"var(--blue)",opacity:0.9,margin:"2px 0 0",fontWeight:pot>1?800:400}},"🎯 Pot: "+(pot||0)+" poeng · Hull "+hole+(money?" · "+(pot*(uval||1))+"kr i potten":""))
+              h("p",{style:{fontSize:11,color:pot>1?"var(--gold)":"var(--blue)",opacity:0.9,margin:"2px 0 0",fontWeight:pot>1?800:400}},"🎯 Pot: "+(pot||0)+" poeng · Hull "+hole+(money?" · "+(pot*(uval||1)*Math.max(1,players.length-1))+"kr i potten":""))
             ),infoBtn),
           info,
           sorted.map((p,i)=>h("div",{key:p.id,style:{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:i<sorted.length-1?"1px solid var(--blue-border)":"none"}},
-            h(Av,{p,sz:28}),h("p",{style:{margin:0,flex:1,fontSize:13,fontWeight:700}},p.name.split(" ")[0]),h("div",null,h("p",{style:{margin:0,fontSize:18,fontWeight:800,color:"var(--blue)"}},(skinMap[p.id]||0)+" skins"),money&&h("p",{style:{margin:0,fontSize:13,color:"var(--gold)",fontWeight:700}},(skinMap[p.id]||0)*uval+"kr"))
+            h(Av,{p,sz:28}),h("p",{style:{margin:0,flex:1,fontSize:13,fontWeight:700}},p.name.split(" ")[0]),h("div",null,h("p",{style:{margin:0,fontSize:18,fontWeight:800,color:"var(--blue)"}},(skinMap[p.id]||0)+" skins"),money&&h("p",{style:{margin:0,fontSize:13,color:(skinKr[p.id]||0)<0?"var(--red)":"var(--gold)",fontWeight:700}},((skinKr[p.id]||0)>0?"+":"")+(skinKr[p.id]||0)+"kr"))
           )),
           hMin!=null&&h("div",{style:{marginTop:8,padding:8,background:"#0a1a3a",borderRadius:8,fontSize:13,fontWeight:600,color:"#4d9fff"}},
             hWin?"🎯 Hull "+hole+": "+hWin.name.split(" ")[0]+" vinner "+pot+" skin"+(pot>1?"s":"")+"!":tied?"🤝 Hull "+hole+": Uavgjort — "+pot+" skins carries over!":"Registrer score"
@@ -2894,8 +3069,16 @@ Svar KUN med JSON:
       }
 
       if(gid==="nines"){
+        if(players.length<3){
+          return h("div",{className:"card ci"},
+            h("p",{style:{fontSize:11,fontWeight:800,color:"var(--blue)",margin:"0 0 8px",letterSpacing:"0.1em",textTransform:"uppercase"}},"🎯 NINES"),
+            h("p",{style:{fontSize:14,fontWeight:700,color:"var(--red)",margin:"0 0 4px"}},"⚠️ Nines krever minst 3 spillere"),
+            h("p",{style:{fontSize:13,color:"var(--muted)",margin:0,lineHeight:1.4}},"9 poeng fordeles mellom 3–4 spillere per hull. Med færre deles ingen poeng — velg et annet spill, eller legg til flere spillere.")
+          );
+        }
         const nP=Math.min(players.length,4);
         const ps=players.slice(0,nP);
+        const ninesKr=gameT(); // (poeng−snitt)×innsats — same som oppgjeret, ikkje brutto poeng×kr
         const map={};ps.forEach(p=>map[p.id]=0);
         for(let hh=1;hh<hole;hh++){
           const hs=ps.map(p=>({id:p.id,s:netFor(p.id,hh)})).filter(x=>x.s!=null);
@@ -2937,7 +3120,7 @@ Svar KUN med JSON:
               ),
               h("div",{style:{textAlign:"right"}},
                 h("span",{style:{fontSize:16,fontWeight:800,color:"var(--blue)"}},(map[p.id]||0)+"p"),
-                money&&h("span",{style:{fontSize:11,color:"var(--gold)",marginLeft:6}},"~"+(Math.round((map[p.id]||0))*uval)+"kr")
+                money&&h("span",{style:{fontSize:11,color:(ninesKr[p.id]||0)<0?"var(--red)":"var(--gold)",marginLeft:6}},((ninesKr[p.id]||0)>0?"+":"")+(ninesKr[p.id]||0)+"kr")
               )
             ))
           )
@@ -3002,7 +3185,7 @@ Svar KUN med JSON:
           if(s.bango&&tot[s.bango]!==undefined)tot[s.bango]++;
           if(s.bongo&&tot[s.bongo]!==undefined)tot[s.bongo]++;
         });
-        const moneyTot={};players.forEach(p=>moneyTot[p.id]=(tot[p.id]||0)*(money?uval:1));
+        const moneyTot=gameT(); // (poeng−snitt)×innsats — same som oppgjeret, ikkje brutto poeng×kr
         const claim=(type,pid)=>setBingoClaims(prev=>({...prev,[hole]:{...(prev[hole]||{}),[type]:bc[type]===pid?null:pid}}));
         return h("div",{className:"card ci"},
           h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
@@ -3039,7 +3222,7 @@ Svar KUN med JSON:
                 ),
                 h("div",null,
                   h("span",{style:{fontSize:14,fontWeight:800,color:"var(--blue)"}},(tot[p.id]||0)+"p"),
-                  money&&h("span",{style:{fontSize:11,color:"var(--gold)",marginLeft:6}},(moneyTot[p.id]||0)+"kr")
+                  money&&h("span",{style:{fontSize:11,color:(moneyTot[p.id]||0)<0?"var(--red)":"var(--gold)",marginLeft:6}},((moneyTot[p.id]||0)>0?"+":"")+(moneyTot[p.id]||0)+"kr")
                 )
               )
             )
@@ -3051,13 +3234,16 @@ Svar KUN med JSON:
       if(gid==="joker"){
         // Give each player 3 joker cards if not done
         const JCARDS=["replay","double","shield","bomb"];
-        // Init kun naar ingen spillere har faatt kort enno (unngaa reset naar kort spilles opp)
-        const anyInitialized=players.some(p=>jokerCards[p.id]!==undefined);
-        if(!anyInitialized&&players.length>0){
-          const init={};
-          // Hver spiller faar 4 jokerkort: replay, double, shield, bomb
-          players.forEach(p=>{init[p.id]=["replay","double","shield","bomb"];});
-          setJokerCards(init);
+        // Init PER SPILLER (ikkje alt-eller-ingenting): ein som joinar etter
+        // rundestart fekk foer aldri kort («Ingen kort igjen» for alltid).
+        // Brukte kort vert ikkje resett — berre udefinerte spelarar fyllast.
+        const missing=players.filter(p=>jokerCards[p.id]===undefined);
+        if(missing.length>0){
+          setJokerCards(prev=>{
+            const n={...prev};
+            missing.forEach(p=>{if(n[p.id]===undefined)n[p.id]=[...JCARDS];});
+            return n;
+          });
         }
         // Matchplay score: track hole wins
         const jScore={};players.forEach(p=>jScore[p.id]=0);
@@ -3115,24 +3301,24 @@ Svar KUN med JSON:
 
       // ── BANKER ─────────────────────────────────────────────────────────
       if(gid==="banker"){
-        const bankPl=players[bankerIdx%players.length];
-        const others=players.filter(p=>p.id!==bankPl.id);
-        // Calculate: bank vs each opponent per hole
+        // Banker per HULL (frosen ved score via bankerFor) — same kjelde som gameT,
+        // saa banker-byte ikkje omskriv historikken i panelet heller.
+        const bankPl=players.find(p=>p.id===bankerFor(hole))||players[bankerIdx%players.length];
         const bankResults=[];
-        // Tell ALLE spilte hull (inkl. inneværende) — samme spenn som gameT()
-        // sin banker-utregning, så panel-saldoen matcher penge-chipsene på score-korta.
         for(let hh=1;hh<=hc;hh++){
-          const bS=netFor(bankPl.id,hh);
-          if(bS==null)continue;
-          others.forEach(op=>{
+          const bId=bankerFor(hh);if(!bId)continue;
+          const bS=netFor(bId,hh);if(bS==null)continue;
+          const bName=players.find(p=>p.id===bId)?.name.split(" ")[0]||"?";
+          players.filter(p=>p.id!==bId).forEach(op=>{
             const oS=netFor(op.id,hh);
             if(oS==null)return;
-            const diff=bS-oS; // neg = banker wins
+            const diff=bS-oS; // neg = banker vinn
             const amt=money?uval:1;
-            bankResults.push({hh,op:op.name.split(" ")[0],diff,amt,bankerWins:diff<0,tie:diff===0});
+            bankResults.push({hh,bName,op:op.name.split(" ")[0],amt,bankerWins:diff<0,tie:diff===0});
           });
         }
-        const bankerTotal=bankResults.reduce((s,r)=>s+(r.bankerWins?r.amt:r.tie?0:-r.amt),0);
+        // Gjeldande banker sin totalsaldo — same tal som penge-chipsen (gameT)
+        const bankerTotal=gameT()[bankPl?.id]||0;
         return h("div",{className:"card ci"},
           h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
             h("div",null,
@@ -3164,7 +3350,7 @@ Svar KUN med JSON:
           // Per-hole vs opponents
           bankResults.length>0&&h("div",null,
             bankResults.slice(-3).map((r,i)=>h("div",{key:i,style:{display:"flex",justifyContent:"space-between",fontSize:12,padding:"4px 0",color:"var(--muted)"}},
-              h("span",null,"H"+r.hh+" vs "+r.op),
+              h("span",null,"H"+r.hh+": "+r.bName+" vs "+r.op),
               h("span",{style:{color:r.bankerWins?"var(--green)":r.tie?"var(--muted)":"var(--red)",fontWeight:700}},
                 r.bankerWins?(money?"+"+r.amt+"kr":"+1"):(r.tie?"0":(money?"-"+r.amt+"kr":"-1")))
             ))
@@ -3197,18 +3383,20 @@ Svar KUN med JSON:
         const teamB=PARTNERSHIPS[period*2+1];
         const nameOf=id=>players.find(p=>p.id===id)?.name.split(" ")[0]||"?";
 
-        // Calculate team scores per hole
+        // Hull vunne av kvart lag I GJELDANDE PERIODE (lagsaldo paa tvers av
+        // periodar er meiningslaus sidan laga skifter kvar 6. hull).
+        const pFrom=period*6+1,pTo=Math.min(period*6+6,hc);
         const teamScores={a:0,b:0};
-        for(let hh=1;hh<hole;hh++){
-          const ph=hh<=6?0:hh<=12?1:2;
-          const tA=PARTNERSHIPS[ph*2], tB=PARTNERSHIPS[ph*2+1];
-          const sA=tA.reduce((sum,id)=>{const s=netFor(id,hh);return s!=null?sum+s:null},0);
-          const sB=tB.reduce((sum,id)=>{const s=netFor(id,hh);return s!=null?sum+s:null},0);
+        for(let hh=pFrom;hh<=pTo;hh++){
+          const sA=teamA.reduce((sum,id)=>{const s=netFor(id,hh);return s!=null&&sum!=null?sum+s:null},0);
+          const sB=teamB.reduce((sum,id)=>{const s=netFor(id,hh);return s!=null&&sum!=null?sum+s:null},0);
           if(sA!=null&&sB!=null){
-            if(sA<sB)teamScores.a+=money?uval:1;
-            else if(sB<sA)teamScores.b+=money?uval:1;
+            if(sA<sB)teamScores.a++;
+            else if(sB<sA)teamScores.b++;
           }
         }
+        // Individuell pengesaldo — SAME kjelde som chips/summary (gameT)
+        const sixKr=gameT();
         const manualTeams=sixesTeams[hole];
         return h("div",{className:"card ci"},
           h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
@@ -3224,12 +3412,21 @@ Svar KUN med JSON:
             h("div",{style:{background:"rgba(90,143,184,0.12)",borderRadius:10,padding:"10px 12px",border:"1px solid rgba(90,143,184,0.3)"}},
               h("p",{style:{fontSize:10,color:"var(--blue)",fontWeight:800,marginBottom:4,textTransform:"uppercase",letterSpacing:"0.08em"}},"Lag A"),
               h("p",{style:{fontSize:14,fontWeight:700,color:"#fff",margin:0}},teamA.map(nameOf).join(" + ")),
-              money&&h("p",{style:{fontSize:16,fontWeight:900,color:"var(--blue)",margin:"4px 0 0"}},teamScores.a+(money?"kr":"p")+" tot")
+              h("p",{style:{fontSize:16,fontWeight:900,color:"var(--blue)",margin:"4px 0 0"}},teamScores.a+" hull vunnet")
             ),
             h("div",{style:{background:"rgba(201,84,68,0.12)",borderRadius:10,padding:"10px 12px",border:"1px solid rgba(201,84,68,0.3)"}},
               h("p",{style:{fontSize:10,color:"var(--red)",fontWeight:800,marginBottom:4,textTransform:"uppercase",letterSpacing:"0.08em"}},"Lag B"),
               h("p",{style:{fontSize:14,fontWeight:700,color:"#fff",margin:0}},teamB.map(nameOf).join(" + ")),
-              money&&h("p",{style:{fontSize:16,fontWeight:900,color:"var(--red)",margin:"4px 0 0"}},teamScores.b+(money?"kr":"p")+" tot")
+              h("p",{style:{fontSize:16,fontWeight:900,color:"var(--red)",margin:"4px 0 0"}},teamScores.b+" hull vunnet")
+            )
+          ),
+          money&&h("div",{style:{background:"#080c18",borderRadius:8,padding:"10px 12px",marginBottom:10}},
+            h("p",{style:{fontSize:10,color:"var(--blue)",fontWeight:800,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.08em"}},"Saldo"),
+            [...players].sort((a,b)=>(sixKr[b.id]||0)-(sixKr[a.id]||0)).map(p=>
+              h("div",{key:p.id,style:{display:"flex",justifyContent:"space-between",padding:"3px 0"}},
+                h("span",{style:{fontSize:13,fontWeight:600,color:"#fff"}},p.name.split(" ")[0]),
+                h("span",{style:{fontSize:14,fontWeight:800,color:(sixKr[p.id]||0)>0?"var(--green)":(sixKr[p.id]||0)<0?"var(--red)":"var(--muted)"}},((sixKr[p.id]||0)>0?"+":"")+(sixKr[p.id]||0)+"kr")
+              )
             )
           ),
           hMin!=null&&h("div",{style:{padding:8,background:"var(--blue-bg)",borderRadius:8,fontSize:13,fontWeight:700,color:"var(--blue)"}},
