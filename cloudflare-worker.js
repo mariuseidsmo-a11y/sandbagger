@@ -83,6 +83,38 @@ export default {
       return json({ error: "Unauthorized" }, 401, cors);
     }
 
+    // ── Anonym statistikk: POST /stat {ev} → +1 på dagsteller. Ingen IP,
+    //    ingen ID, ingen cookies — berre eit tal per dag per hending.
+    //    GET /stats?days=N → les tellarane (krev token som alt anna).
+    if (request.method === "POST" && url.pathname === "/stat") {
+      try {
+        const { ev } = await request.json();
+        const ok = ["app_open", "round_start", "round_join", "round_done"];
+        if (env.STATS && ok.includes(ev)) {
+          const day = new Date().toISOString().slice(0, 10);
+          const key = "stats:" + day + ":" + ev;
+          const cur = parseInt(await env.STATS.get(key) || "0", 10);
+          await env.STATS.put(key, String(cur + 1), { expirationTtl: 60 * 60 * 24 * 400 });
+        }
+      } catch (e) { /* statistikk skal aldri knekke noko */ }
+      return json({ ok: true }, 200, cors);
+    }
+    if (request.method === "GET" && url.pathname === "/stats") {
+      if (!env.STATS) return json({ error: "no stats binding" }, 500, cors);
+      const days = Math.min(60, parseInt(url.searchParams.get("days") || "14", 10));
+      const out = {};
+      for (let i = 0; i < days; i++) {
+        const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+        const row = {};
+        for (const ev of ["app_open", "round_start", "round_join", "round_done"]) {
+          const v = await env.STATS.get("stats:" + d + ":" + ev);
+          if (v) row[ev] = parseInt(v, 10);
+        }
+        if (Object.keys(row).length) out[d] = row;
+      }
+      return json(out, 200, cors);
+    }
+
     // ── Bane-søk: GET /course/search?q=...
     if (request.method === "GET" && url.pathname === "/course/search") {
       const q = (url.searchParams.get("q") || "").trim();

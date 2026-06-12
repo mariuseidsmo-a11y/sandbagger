@@ -396,6 +396,8 @@ const EN2={
 "🍺 Under 0.2‰ — ingen ekstra slag ennå":"🍺 Under 0.2‰ — no extra strokes yet",
 "Ett veddemål på 9 hull: flest vunne hull vinner.":"One bet over 9 holes: most holes won wins.",
 "📜 Full personvernerklæring og vilkår →":"📜 Full privacy policy and terms →",
+"📸 Del runde-kortet":"📸 Share the round card","📤 Del rom-lenke":"📤 Share room link","📤 Del":"📤 Share","Del":"Share",
+"Del lenken i gruppechatten — kompisene joiner med ett trykk.":"Share the link in the group chat — your friends join with one tap.",
 "⚠️ Nines krever minst 3 spillere":"⚠️ Nines requires at least 3 players",
 "9 poeng fordeles mellom 3–4 spillere per hull. Med færre deles ingen poeng — velg et annet spill, eller legg til flere spillere.":"9 points are split between 3–4 players per hole. With fewer, no points are awarded — pick another game or add more players.",
 "⚠️ Scratch-modus: kun promille-sporing — ingen ekstra slag (rå slag teller).":"⚠️ Scratch mode: BAC tracking only — no extra strokes (raw strokes count).",
@@ -885,6 +887,13 @@ async function callAI(msgs,max,model){
 
 // ── Bane-database (golfcourseapi.com via worker-proxy) ──────────────────
 const WORKER_URL="https://sandbagger-ai.mariuseidsmo.workers.dev";
+// Anonym dagsteller (ingen ID, ingen cookies, berre +1 paa ein dagsteller).
+// Fire-and-forget — feil skal aldri paaverke appen.
+function ping(ev){
+  try{
+    fetch(WORKER_URL+"/stat",{method:"POST",headers:{"Content-Type":"application/json","X-App-Token":APP_TOKEN},body:JSON.stringify({ev})}).catch(()=>{});
+  }catch(e){}
+}
 // Innebygde norske baner (seed + fallback hvis kvdb er nede). Crowdsourcede baner merges oppå.
 const BUILTIN_COURSES=[{"id":"no_mjosen_gk","name":"Mjøsen Golfklubb","cr":69.9,"slope":126,"hp":{"1":3,"2":4,"3":3,"4":5,"5":4,"6":3,"7":4,"8":4,"9":4,"10":4,"11":3,"12":4,"13":3,"14":4,"15":5,"16":4,"17":4,"18":5},"hi":{"1":18,"2":8,"3":16,"4":14,"5":6,"6":12,"7":10,"8":2,"9":4,"10":13,"11":7,"12":1,"13":11,"14":15,"15":17,"16":3,"17":9,"18":5},"hc":18,"src":"golfbox"},{"id":"no_losby_ostmork_18","name":"Losby Golfklubb – Østmork","cr":72.1,"slope":135,"hp":{"1":5,"2":3,"3":5,"4":4,"5":4,"6":3,"7":4,"8":3,"9":4,"10":3,"11":5,"12":4,"13":3,"14":5,"15":4,"16":4,"17":5,"18":4},"hi":{"1":8,"2":18,"3":10,"4":6,"5":2,"6":12,"7":14,"8":16,"9":4,"10":5,"11":15,"12":13,"13":7,"14":9,"15":3,"16":1,"17":17,"18":11},"hc":18,"src":"golfbox"},{"id":"no_losby_vestmork","name":"Losby Golfklubb – Vestmork","cr":63.8,"slope":111,"hp":{"1":4,"2":3,"3":5,"4":4,"5":3,"6":4,"7":4,"8":5,"9":3,"10":4,"11":3,"12":5,"13":4,"14":3,"15":4,"16":4,"17":5,"18":3},"hi":{"1":6,"2":16,"3":2,"4":10,"5":12,"6":4,"7":14,"8":8,"9":18,"10":5,"11":15,"12":1,"13":9,"14":11,"15":3,"16":13,"17":7,"18":17},"hc":18,"src":"golfbox"},{"id":"no_utsikten_gk","name":"Utsikten Golfklubb","cr":68.8,"slope":147,"hp":{"1":3,"2":4,"3":4,"4":3,"5":4,"6":4,"7":4,"8":5,"9":3,"10":4,"11":4,"12":4,"13":3,"14":4,"15":4,"16":4,"17":5,"18":4},"hi":{"1":16,"2":10,"3":12,"4":17,"5":7,"6":15,"7":5,"8":1,"9":13,"10":11,"11":9,"12":3,"13":18,"14":8,"15":2,"16":14,"17":6,"18":4},"hc":18,"src":"golfbox"},{"id":"no_kristiansand_gk","name":"Kristiansand Golfklubb","cr":67.5,"slope":140,"hp":{"1":4,"2":4,"3":4,"4":5,"5":3,"6":4,"7":5,"8":3,"9":4,"10":4,"11":4,"12":4,"13":5,"14":3,"15":4,"16":5,"17":3,"18":4},"hi":{"1":9,"2":5,"3":11,"4":1,"5":15,"6":13,"7":3,"8":17,"9":7,"10":6,"11":12,"12":10,"13":2,"14":14,"15":16,"16":4,"17":18,"18":8},"hc":18,"src":"golfbox"},{"id":"no_alesund_gk","name":"Ålesund Golfklubb (Solnør Gaard)","cr":71.1,"slope":147,"hp":{"1":4,"2":5,"3":3,"4":5,"5":4,"6":4,"7":4,"8":4,"9":3,"10":4,"11":5,"12":3,"13":4,"14":5,"15":3,"16":4,"17":4,"18":4},"hi":{"1":15,"2":5,"3":13,"4":1,"5":9,"6":3,"7":11,"8":7,"9":17,"10":10,"11":4,"12":18,"13":16,"14":6,"15":14,"16":12,"17":8,"18":2},"hc":18,"src":"golfbox"},{"id":"no_bergen_gk","name":"Bergen Golfklubb","cr":66,"slope":118,"hp":{"1":3,"2":3,"3":4,"4":4,"5":5,"6":4,"7":4,"8":4,"9":3,"10":3,"11":3,"12":4,"13":4,"14":5,"15":4,"16":4,"17":4,"18":3},"hi":{"1":17,"2":9,"3":5,"4":11,"5":1,"6":7,"7":3,"8":13,"9":15,"10":16,"11":18,"12":4,"13":8,"14":2,"15":12,"16":6,"17":14,"18":10},"hc":18,"src":"golfbox"},{"id":"no_haugaland_gk","name":"Haugaland Golfklubb (Sveio)","cr":71.3,"slope":140,"hp":{"1":4,"2":3,"3":5,"4":4,"5":4,"6":5,"7":4,"8":3,"9":4,"10":4,"11":3,"12":4,"13":4,"14":4,"15":4,"16":3,"17":4,"18":5},"hi":{"1":15,"2":17,"3":3,"4":1,"5":13,"6":9,"7":7,"8":5,"9":11,"10":2,"11":8,"12":6,"13":12,"14":18,"15":16,"16":10,"17":14,"18":4},"hc":18,"src":"golfbox"},{"id":"no_elverum_gk","name":"Elverum Golfklubb","cr":71.9,"slope":143,"hp":{"1":4,"2":4,"3":4,"4":5,"5":4,"6":3,"7":4,"8":3,"9":5,"10":4,"11":4,"12":4,"13":4,"14":3,"15":5,"16":4,"17":3,"18":5},"hi":{"1":6,"2":16,"3":8,"4":10,"5":2,"6":12,"7":4,"8":18,"9":14,"10":15,"11":5,"12":13,"13":7,"14":9,"15":3,"16":11,"17":17,"18":1},"hc":18,"src":"golfbox"},{"id":"no_kragero_gk","name":"Kragerø Golfklubb","cr":69,"slope":136,"hp":{"1":4,"2":3,"3":4,"4":4,"5":4,"6":3,"7":5,"8":5,"9":4,"10":3,"11":4,"12":4,"13":4,"14":3,"15":5,"16":4,"17":3,"18":4},"hi":{"1":9,"2":17,"3":7,"4":13,"5":3,"6":15,"7":11,"8":1,"9":5,"10":14,"11":12,"12":8,"13":10,"14":16,"15":2,"16":6,"17":18,"18":4},"hc":18,"src":"golfbox"},{"id":"no_trysil_golf","name":"Trysil Golf (Trysilfjellet)","cr":72,"slope":137,"hp":{"1":4,"2":3,"3":4,"4":5,"5":4,"6":4,"7":5,"8":3,"9":4,"10":4,"11":4,"12":5,"13":3,"14":4,"15":4,"16":5,"17":3,"18":4},"hi":{"1":8,"2":18,"3":14,"4":2,"5":10,"6":4,"7":12,"8":16,"9":6,"10":11,"11":7,"12":5,"13":13,"14":9,"15":15,"16":1,"17":17,"18":3},"hc":18,"src":"golfbox"},{"id":"no_tyrifjord_gk","name":"Tyrifjord Golfklubb","cr":71.3,"slope":135,"hp":{"1":4,"2":4,"3":3,"4":4,"5":5,"6":3,"7":4,"8":4,"9":5,"10":3,"11":5,"12":4,"13":3,"14":4,"15":4,"16":5,"17":4,"18":4},"hi":{"1":7,"2":5,"3":15,"4":13,"5":3,"6":11,"7":1,"8":17,"9":9,"10":18,"11":2,"12":10,"13":14,"14":12,"15":4,"16":16,"17":6,"18":8},"hc":18,"src":"golfbox"},{"id":"no_vestfold_gk","name":"Vestfold Golfklubb","cr":71.8,"slope":137,"hp":{"1":4,"2":4,"3":3,"4":4,"5":4,"6":5,"7":3,"8":5,"9":4,"10":3,"11":4,"12":5,"13":4,"14":4,"15":4,"16":5,"17":3,"18":4},"hi":{"1":13,"2":3,"3":17,"4":1,"5":7,"6":11,"7":15,"8":9,"9":5,"10":18,"11":12,"12":2,"13":10,"14":14,"15":8,"16":6,"17":16,"18":4},"hc":18,"src":"golfbox"},{"id":"no_gamle_fredrikstad_gk","name":"Gamle Fredrikstad Golfklubb","cr":70.7,"slope":147,"hp":{"1":4,"2":4,"3":5,"4":3,"5":4,"6":5,"7":4,"8":3,"9":4,"10":4,"11":4,"12":4,"13":3,"14":5,"15":4,"16":3,"17":4,"18":5},"hi":{"1":15,"2":1,"3":7,"4":13,"5":11,"6":3,"7":17,"8":9,"9":5,"10":4,"11":2,"12":18,"13":14,"14":10,"15":12,"16":8,"17":16,"18":6},"hc":18,"src":"golfbox"},{"id":"no_stiklestad_gk","name":"Stiklestad Golfklubb","cr":71.5,"slope":140,"hp":{"1":3,"2":4,"3":5,"4":3,"5":4,"6":4,"7":5,"8":4,"9":4,"10":4,"11":3,"12":4,"13":5,"14":4,"15":4,"16":4,"17":3,"18":4},"hi":{"1":17,"2":13,"3":1,"4":11,"5":3,"6":7,"7":15,"8":5,"9":9,"10":12,"11":18,"12":14,"13":10,"14":8,"15":2,"16":6,"17":16,"18":4},"hc":18,"src":"golfbox"},{"id":"no_hauger_gk","name":"Hauger Golfklubb","cr":73,"slope":131,"hp":{"1":4,"2":4,"3":5,"4":3,"5":5,"6":4,"7":3,"8":4,"9":4,"10":4,"11":4,"12":3,"13":4,"14":5,"15":4,"16":5,"17":3,"18":4},"hi":{"1":3,"2":11,"3":5,"4":17,"5":1,"6":7,"7":15,"8":9,"9":13,"10":10,"11":8,"12":16,"13":2,"14":4,"15":12,"16":6,"17":18,"18":14},"hc":18,"src":"golfbox"},{"id":"no_borre_gk","name":"Borre Golfklubb","cr":72.6,"slope":146,"hp":{"1":4,"2":3,"3":5,"4":4,"5":4,"6":4,"7":3,"8":5,"9":4,"10":4,"11":5,"12":4,"13":3,"14":4,"15":4,"16":5,"17":4,"18":4},"hi":{"1":8,"2":18,"3":6,"4":2,"5":16,"6":10,"7":14,"8":4,"9":12,"10":13,"11":3,"12":9,"13":17,"14":1,"15":11,"16":5,"17":15,"18":7},"hc":18,"src":"golfbox"},{"id":"no_larvik_gk","name":"Larvik Golfklubb – Fritzøe Gård","cr":71.2,"slope":138,"hp":{"1":4,"2":3,"3":5,"4":3,"5":4,"6":3,"7":5,"8":5,"9":4,"10":5,"11":4,"12":3,"13":5,"14":4,"15":3,"16":4,"17":3,"18":5},"hi":{"1":9,"2":17,"3":5,"4":15,"5":1,"6":13,"7":3,"8":7,"9":11,"10":10,"11":4,"12":16,"13":2,"14":8,"15":18,"16":6,"17":14,"18":12},"hc":18,"src":"golfbox"},{"id":"no_atlungstad_gk","name":"Atlungstad Golfklubb","cr":70.1,"slope":128,"hp":{"1":5,"2":3,"3":4,"4":4,"5":4,"6":3,"7":4,"8":4,"9":5,"10":4,"11":4,"12":4,"13":3,"14":4,"15":5,"16":3,"17":4,"18":5},"hi":{"1":12,"2":16,"3":2,"4":8,"5":10,"6":18,"7":4,"8":6,"9":14,"10":7,"11":3,"12":11,"13":15,"14":1,"15":17,"16":13,"17":9,"18":5},"hc":18,"src":"golfbox"},{"id":"no_moss_rygge_gk","name":"Moss & Rygge Golfklubb – Evje","cr":71.5,"slope":129,"hp":{"1":5,"2":4,"3":4,"4":5,"5":4,"6":3,"7":5,"8":3,"9":4,"10":3,"11":4,"12":4,"13":4,"14":3,"15":4,"16":4,"17":4,"18":5},"hi":{"1":13,"2":9,"3":15,"4":3,"5":1,"6":17,"7":11,"8":7,"9":5,"10":18,"11":4,"12":10,"13":8,"14":14,"15":16,"16":2,"17":6,"18":12},"hc":18,"src":"golfbox"},{"id":"no_losby_ostmork","name":"Losby Golfklubb – Østmork (9-hull)","cr":71.6,"slope":136,"hp":{"1":5,"2":3,"3":4,"4":3,"5":4,"6":4,"7":3,"8":5,"9":4,"10":5,"11":3,"12":4,"13":3,"14":4,"15":4,"16":3,"17":5,"18":4},"hi":{"1":9,"2":17,"3":13,"4":5,"5":1,"6":15,"7":7,"8":11,"9":3,"10":10,"11":18,"12":14,"13":6,"14":2,"15":16,"16":8,"17":12,"18":4},"hc":18,"src":"golfbox"},{"id":"no_meland_gk","name":"Meland Golfklubb","cr":72.7,"slope":140,"hp":{"1":5,"2":4,"3":5,"4":3,"5":5,"6":4,"7":4,"8":4,"9":3,"10":5,"11":4,"12":4,"13":3,"14":4,"15":4,"16":5,"17":4,"18":3},"hi":{"1":12,"2":6,"3":2,"4":18,"5":8,"6":14,"7":16,"8":10,"9":4,"10":5,"11":13,"12":9,"13":17,"14":1,"15":7,"16":3,"17":11,"18":15},"hc":18,"src":"golfbox"},{"id":"no_kongsvinger_gk","name":"Kongsvinger Golfklubb","cr":71.9,"slope":138,"hp":{"1":4,"2":4,"3":5,"4":3,"5":4,"6":4,"7":3,"8":5,"9":4,"10":5,"11":3,"12":5,"13":4,"14":3,"15":4,"16":4,"17":3,"18":5},"hi":{"1":13,"2":11,"3":1,"4":17,"5":7,"6":9,"7":15,"8":3,"9":5,"10":4,"11":18,"12":2,"13":8,"14":16,"15":6,"16":12,"17":14,"18":10},"hc":18,"src":"golfbox"},{"id":"no_bjaavann_gk","name":"Bjaavann Golfklubb (Kristiansand)","cr":72.1,"slope":137,"hp":{"1":5,"2":3,"3":5,"4":4,"5":4,"6":4,"7":3,"8":3,"9":5,"10":4,"11":4,"12":4,"13":3,"14":4,"15":4,"16":5,"17":3,"18":5},"hi":{"1":3,"2":11,"3":5,"4":9,"5":7,"6":13,"7":17,"8":15,"9":1,"10":6,"11":16,"12":14,"13":12,"14":10,"15":2,"16":8,"17":18,"18":4},"hc":18,"src":"golfbox"},{"id":"no_byneset_gk","name":"Byneset Golfklubb","cr":71.4,"slope":133,"hp":{"1":5,"2":3,"3":4,"4":4,"5":4,"6":3,"7":5,"8":3,"9":4,"10":5,"11":4,"12":4,"13":3,"14":4,"15":5,"16":4,"17":4,"18":4},"hi":{"1":7,"2":13,"3":5,"4":1,"5":11,"6":17,"7":3,"8":15,"9":9,"10":18,"11":14,"12":8,"13":16,"14":6,"15":10,"16":12,"17":2,"18":4},"hc":18,"src":"golfbox"},{"id":"no_notteroy_gk","name":"Nøtterøy Golfklubb","cr":71.7,"slope":139,"hp":{"1":4,"2":4,"3":4,"4":3,"5":4,"6":5,"7":3,"8":4,"9":5,"10":4,"11":5,"12":4,"13":4,"14":4,"15":3,"16":4,"17":3,"18":5},"hi":{"1":15,"2":3,"3":11,"4":13,"5":1,"6":5,"7":17,"8":9,"9":7,"10":12,"11":10,"12":14,"13":6,"14":2,"15":16,"16":4,"17":18,"18":8},"hc":18,"src":"golfbox"},{"id":"no_lofoten_gk","name":"Lofoten Golfklubb","cr":74.3,"slope":143,"hp":{"1":4,"2":3,"3":4,"4":4,"5":4,"6":3,"7":5,"8":5,"9":4,"10":4,"11":4,"12":3,"13":5,"14":4,"15":4,"16":4,"17":3,"18":4},"hi":{"1":15,"2":7,"3":13,"4":11,"5":9,"6":17,"7":3,"8":1,"9":5,"10":10,"11":8,"12":6,"13":16,"14":2,"15":14,"16":4,"17":18,"18":12},"hc":18,"src":"golfbox"},{"id":"no_miklagard_golf","name":"Miklagard Golf","cr":71.7,"slope":135,"hp":{"1":4,"2":4,"3":4,"4":5,"5":3,"6":5,"7":3,"8":4,"9":3,"10":4,"11":4,"12":3,"13":5,"14":4,"15":4,"16":5,"17":3,"18":5},"hi":{"1":2,"2":16,"3":10,"4":4,"5":14,"6":8,"7":18,"8":6,"9":12,"10":5,"11":1,"12":17,"13":11,"14":13,"15":15,"16":7,"17":3,"18":9},"hc":18,"src":"golfbox"},{"id":"no_oslo_gk_bogstad","name":"Oslo Golfklubb – Bogstad","cr":72.1,"slope":144,"hp":{"1":4,"2":5,"3":3,"4":4,"5":4,"6":4,"7":4,"8":3,"9":5,"10":5,"11":3,"12":4,"13":4,"14":4,"15":5,"16":3,"17":4,"18":4},"hi":{"1":11,"2":13,"3":7,"4":3,"5":5,"6":9,"7":15,"8":17,"9":1,"10":6,"11":16,"12":8,"13":12,"14":10,"15":2,"16":18,"17":4,"18":14},"hc":18,"src":"golfbox"},{"id":"no_holtsmark_gk","name":"Holtsmark Golfklubb","cr":74,"slope":147,"hp":{"1":5,"2":4,"3":3,"4":4,"5":3,"6":5,"7":5,"8":4,"9":3,"10":4,"11":4,"12":3,"13":4,"14":4,"15":5,"16":4,"17":3,"18":5},"hi":{"1":9,"2":5,"3":11,"4":7,"5":17,"6":15,"7":1,"8":3,"9":13,"10":10,"11":8,"12":14,"13":6,"14":4,"15":12,"16":16,"17":18,"18":2},"hc":18,"src":"golfbox"},{"id":"no_preikestolen_gk","name":"Preikestolen Golfklubb","cr":72.7,"slope":145,"hp":{"1":4,"2":5,"3":4,"4":4,"5":3,"6":5,"7":4,"8":3,"9":4,"10":4,"11":4,"12":4,"13":5,"14":3,"15":4,"16":4,"17":3,"18":5},"hi":{"1":17,"2":5,"3":3,"4":7,"5":13,"6":9,"7":11,"8":15,"9":1,"10":18,"11":4,"12":10,"13":8,"14":16,"15":6,"16":12,"17":14,"18":2},"hc":18,"src":"golfbox"},{"id":"no_stavanger_gk","name":"Stavanger Golfklubb","cr":71.3,"slope":137,"hp":{"1":4,"2":4,"3":3,"4":4,"5":3,"6":5,"7":4,"8":4,"9":5,"10":3,"11":4,"12":4,"13":4,"14":4,"15":4,"16":4,"17":3,"18":5},"hi":{"1":9,"2":13,"3":11,"4":5,"5":17,"6":3,"7":1,"8":7,"9":15,"10":18,"11":4,"12":8,"13":6,"14":10,"15":16,"16":14,"17":12,"18":2},"hc":18,"src":"golfbox"},{"id":"no_sandnes_gk","name":"Sandnes Golfklubb","cr":71.5,"slope":142,"hp":{"1":4,"2":5,"3":4,"4":3,"5":4,"6":4,"7":3,"8":4,"9":5,"10":5,"11":3,"12":4,"13":5,"14":4,"15":3,"16":4,"17":3,"18":5},"hi":{"1":1,"2":5,"3":9,"4":15,"5":13,"6":3,"7":17,"8":7,"9":11,"10":12,"11":10,"12":8,"13":6,"14":4,"15":18,"16":14,"17":16,"18":2},"hc":18,"src":"golfbox"},{"id":"no_sola_forus","name":"Sola Golfklubb – Forus","cr":null,"slope":null,"hp":{"1":4,"2":4,"3":4,"4":3,"5":5,"6":4,"7":3,"8":4,"9":5,"10":4,"11":3,"12":5,"13":4,"14":4,"15":4,"16":4,"17":3,"18":5},"hi":{"1":6,"2":8,"3":4,"4":16,"5":14,"6":2,"7":18,"8":10,"9":12,"10":11,"11":15,"12":9,"13":3,"14":17,"15":7,"16":1,"17":13,"18":5},"hc":18,"src":"golfbox"},{"id":"no_sola_solastranden","name":"Sola Golfklubb – Solastranden","cr":null,"slope":null,"hp":{"1":4,"2":4,"3":3,"4":4,"5":4,"6":4,"7":3,"8":4,"9":5,"10":4,"11":3,"12":5,"13":3,"14":3,"15":4,"16":4,"17":3,"18":4},"hi":{"1":3,"2":1,"3":13,"4":17,"5":9,"6":7,"7":15,"8":5,"9":11,"10":10,"11":18,"12":6,"13":16,"14":14,"15":4,"16":2,"17":12,"18":8},"hc":18,"src":"golfbox"}];
 async function searchCourses(q){
@@ -1294,6 +1303,16 @@ function App(){
   useEffect(()=>{},[theme]);
 
   useEffect(()=>{
+    ping("app_open");
+    // Join-lenke: sandbagger.no/?join=SAND-XXXXX → rett til "Bli med"-skjermen
+    // med koden ferdig utfylt (eitt trykk for inviterte). URL-en vaskast saa
+    // reload ikkje trigger paa nytt.
+    let joinCode=null;
+    try{
+      const q=new URLSearchParams(window.location.search);
+      const jc=(q.get("join")||"").trim().toUpperCase();
+      if(jc){joinCode=jc;window.history.replaceState(null,"",window.location.pathname);}
+    }catch(e){}
     Promise.all([lod(SK),lod(PK)]).then(async([s,p])=>{
       let prof_=p;
       // If no local profile, try to restore from cloud
@@ -1312,6 +1331,14 @@ function App(){
       // Even if cloud failed, use any cached local profile
       if(!prof_&&p)prof_=p;
       if(prof_){setProf(prof_);setAged(isOver18(prof_.birthdate));if(prof_.lang)setLang(prof_.lang);}
+      // Eksplisitt join-intensjon vinn over auto-resume (lagra runde blir liggande)
+      if(joinCode){
+        if(s&&s.players?.length>0)setSaved(s);
+        setRcode(joinCode);
+        setSc("joinroom");
+        if(!prof_){try{const bd=localStorage.getItem("sb_aged_bd");if(bd)setAged(isOver18(bd));}catch(e){}}
+        return;
+      }
       if(s&&s.players?.length>0){
         setSaved(s);
         // AUTO-RESUME: var vi midt i en runde da appen lukket? Hopp rett inn!
@@ -1677,6 +1704,21 @@ Svar KUN med JSON (ingen markdown):
   // Banker for eit gitt hull: frosen verdi om den finst, elles gjeldande peikar
   function bankerFor(hh){
     return bankerHoles[String(hh)]||players[bankerIdx%players.length]?.id||null;
+  }
+  // Del rom-lenka: eitt trykk i gruppechatten → kompisane joinar med eitt trykk.
+  // Web Share API paa mobil, clipboard-fallback paa desktop.
+  function shareRoom(){
+    if(!rc)return;
+    const url="https://sandbagger.no/?join="+encodeURIComponent(rc);
+    const txt=(lang==="en"?"Join my golf round in Sandbagger! Code: ":"Bli med i golfrunden min i Sandbagger! Kode: ")+rc;
+    if(navigator.share){
+      navigator.share({title:"Sandbagger",text:txt,url}).catch(()=>{});
+    }else{
+      try{
+        navigator.clipboard.writeText(txt+" — "+url);
+        alert(lang==="en"?"Link copied! Paste it in the group chat.":"Lenke kopiert! Lim den inn i gruppechatten.");
+      }catch(e){alert(url);}
+    }
   }
   // Nullstill ALT runde-state ved ny runde — inkl. ht/bankerHoles/preRoundDrinks
   // (gamle tidslaaser ville elles gitt feil promille-slag i neste runde)
@@ -2097,6 +2139,7 @@ const allPlayers=prof&&!existingIds.includes(prof.id)?[...( rd.players||[]),prof
 // Registrer oss i rommets roster slik at VERTEN veit at vi finst og kan
 // polle vaar gjestenoekkel (toveis-synk)
 if(prof){try{const roster=(await syncLoad(syncRosterKey(code)))||{};if(!roster[prof.id]){roster[prof.id]=prof.name||"Gjest";delete roster.syncAt;syncSave(syncRosterKey(code),roster);}}catch(e){}}
+ping("round_join");
 rfState({...rd,players:allPlayers,scr:"game"});}},"Bli med")
     )
   );
@@ -2156,8 +2199,14 @@ rfState({...rd,players:allPlayers,scr:"game"});}},"Bli med")
         h("h2",{style:{fontSize:18,fontWeight:800,margin:"0 0 4px"}},L("players")),
         h("p",{style:{fontSize:13,color:"#6a7098",margin:"0 0 16px"}},"Opptil 4 spillere · Last opp bilde for AI-kallenavn 🤖"),
         rc&&h("div",{className:"card cs",style:{marginBottom:16}},
-          h("p",{style:{fontSize:11,fontWeight:800,color:"var(--accent)",margin:"0 0 2px",letterSpacing:1.5}},"ROM-KODE"),
-          h("p",{style:{fontSize:24,fontWeight:800,letterSpacing:6,color:"var(--accent)",margin:0}},rc)
+          h("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}},
+            h("div",null,
+              h("p",{style:{fontSize:11,fontWeight:800,color:"var(--accent)",margin:"0 0 2px",letterSpacing:1.5}},"ROM-KODE"),
+              h("p",{style:{fontSize:24,fontWeight:800,letterSpacing:6,color:"var(--accent)",margin:0}},rc)
+            ),
+            h("button",{onClick:shareRoom,style:{padding:"10px 14px",fontSize:13,fontWeight:700,borderRadius:10,border:"1.5px solid var(--accent-border)",background:"var(--accent-bg)",color:"var(--accent)",cursor:"pointer",flexShrink:0,minHeight:44}},"📤 Del")
+          ),
+          h("p",{style:{fontSize:11,color:"var(--muted)",margin:"8px 0 0",lineHeight:1.4}},"Del lenken i gruppechatten — kompisene joiner med ett trykk.")
         ),
         players.map((p,i)=>h("div",{key:p.id,className:"card",style:{display:"flex",alignItems:"center",gap:12}},
           h(Av,{p,sz:48}),
@@ -2567,7 +2616,7 @@ Svar KUN med JSON:
             h("span",{style:{color:"#6a7098",fontWeight:600}},l),h("span",{style:{fontWeight:700,maxWidth:"60%",textAlign:"right"}},v)
           ))
         ),
-        h("button",{className:"btn btnp",style:{fontSize:16,padding:"15px"},onClick:()=>setSc("game")},"⛳ Start runde!")
+        h("button",{className:"btn btnp",style:{fontSize:16,padding:"15px"},onClick:()=>{ping("round_start");setSc("game");}},"⛳ Start runde!")
       )
       )
     );
@@ -2579,6 +2628,57 @@ Svar KUN med JSON:
     const mT=moneyT();const debts=[];const t2={...mT};
     const ms=[...players].sort((a,b)=>(t2[b.id]||0)-(t2[a.id]||0));
     ms.filter(p=>t2[p.id]>0).forEach(w=>ms.filter(p=>t2[p.id]<0).forEach(l=>{if(t2[w.id]>0&&t2[l.id]<0){const amt=Math.min(t2[w.id],-t2[l.id]);if(amt>0){debts.push({from:l.name,to:w.name,amt});t2[w.id]-=amt;t2[l.id]+=amt;}}}));
+    // Delbart runde-kort (1080×1350, Instagram/Snapchat-vennleg). Kvar deling
+    // er ein annonse med innebygd humor — appens viktigaste vekstmotor.
+    function shareCard(){
+      try{
+        const W=1080,HH=1350;
+        const c=document.createElement("canvas");c.width=W;c.height=HH;
+        const x=c.getContext("2d");
+        x.fillStyle="#0B0B0B";x.fillRect(0,0,W,HH);
+        x.fillStyle="#C5B89A";x.fillRect(0,0,W,8);
+        x.textAlign="center";
+        x.fillStyle="#C5B89A";x.font="900 118px Impact,'Arial Black',sans-serif";
+        x.fillText("SANDBAGGER",W/2,170);
+        x.fillStyle="#9a9a9a";x.font="600 30px Arial,sans-serif";
+        x.fillText((courseName||hc+" hull").toUpperCase()+"  ·  "+new Date().toLocaleDateString("no-NO")+(gObj?"  ·  "+gObj.label.toUpperCase():""),W/2,237);
+        const w0=allS[0];
+        x.font="115px Arial";x.fillText("🏆",W/2,405);
+        x.fillStyle="#F0F0F0";x.font="900 88px Impact,'Arial Black',sans-serif";
+        x.fillText((w0?w0.p.name.split(" ")[0].toUpperCase():"")+(lang==="en"?" WON!":" VANT!"),W/2,515);
+        x.fillStyle="#D4A961";x.font="700 42px Arial,sans-serif";
+        x.fillText(w0?(isSF?w0.sf+(lang==="en"?" points":" poeng"):isScratch?w0.total+(lang==="en"?" strokes":" slag"):w0.net+(lang==="en"?" net":" netto")):"",W/2,578);
+        const medals=["🥇","🥈","🥉","4."];
+        let y=705;
+        allS.slice(0,4).forEach((row,i)=>{
+          x.font="700 47px Arial,sans-serif";
+          x.textAlign="left";x.fillStyle="#F0F0F0";
+          x.fillText(medals[i]+"  "+row.p.name.split(" ")[0],120,y);
+          x.textAlign="right";x.fillStyle="#C5B89A";
+          x.fillText(String(isSF?row.sf+"p":isScratch?row.total:row.net),W-120,y);
+          x.fillStyle="#242424";x.fillRect(120,y+26,W-240,2);
+          y+=92;
+        });
+        if(beer){
+          const top=Math.max(...players.map(p=>bacOf(p)));
+          x.textAlign="center";x.fillStyle="#D4A961";x.font="700 40px Arial,sans-serif";
+          x.fillText("🍺 "+(lang==="en"?"Top BAC: ":"Topp promille: ")+top.toFixed(2)+"‰",W/2,y+42);
+        }
+        x.textAlign="center";
+        x.fillStyle="#666";x.font="600 29px Arial,sans-serif";
+        x.fillText(lang==="en"?"Golf for people who don't take themselves too seriously":"Golf for de som ikke tar seg selv for seriøst",W/2,HH-130);
+        x.fillStyle="#C5B89A";x.font="900 46px Impact,'Arial Black',sans-serif";
+        x.fillText("SANDBAGGER.NO",W/2,HH-62);
+        c.toBlob(async(blob)=>{
+          if(!blob)return;
+          const file=new File([blob],"sandbagger-runde.png",{type:"image/png"});
+          if(navigator.canShare&&navigator.canShare({files:[file]})){
+            try{await navigator.share({files:[file],title:"Sandbagger",text:(lang==="en"?"Today's round in Sandbagger ⛳":"Dagens runde i Sandbagger ⛳")+" — sandbagger.no"});return;}catch(e){/* avbroten deling → fall til nedlasting? nei, brukaren avbraut bevisst */return;}
+          }
+          const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="sandbagger-runde.png";document.body.appendChild(a);a.click();a.remove();
+        },"image/png");
+      }catch(e){alert((lang==="en"?"Couldn't create the image: ":"Kunne ikke lage bildet: ")+e.message);}
+    }
     return h("div",{className:"sb-screen",key:"s_"+scr,style:{position:"relative",minHeight:"100vh",background:"var(--bg)"}},
       h(PhotoBg,{screenKey:"summary"}),
       h("div",{style:{position:"relative",zIndex:1,padding:"64px 20px 60px"}},
@@ -2668,10 +2768,12 @@ Svar KUN med JSON:
           ))
         ),
 
+        h("button",{className:"btn",style:{fontSize:15,fontWeight:800,color:"var(--accent)",border:"1.5px solid var(--accent-border)",background:"var(--accent-bg)",marginBottom:4},onClick:shareCard},"📸 Del runde-kortet"),
         h("button",{className:"btn btnp",style:{fontSize:15,padding:"14px",letterSpacing:"0.03em"},onClick:async()=>{
           const winner=allS[0];
           const myResult=allS.find(x=>x.p.id===prof?.id);
           const entry={date:new Date().toLocaleDateString("no-NO"),dateTs:Date.now(),course:courseName||"Ukjent bane",game:gObj?.label||"Fri runde",holes:hc,players:players.map(p=>p.name.split(" ")[0]).join(", "),winner:winner?.p.name.split(" ")[0],myScore:myResult?(isSF?myResult.sf+"p":myResult.net+" netto"):null,myBrutto:myResult?myResult.total:null,isSF};
+          ping("round_done");
           // Guard mot dobbel-tap: ikkje lagre to identiske oppfoeringar rett etter kvarandre
           const dup=history[0]&&history[0].players===entry.players&&history[0].course===entry.course&&(entry.dateTs-(history[0].dateTs||0))<60000;
           if(!dup){
@@ -3543,7 +3645,8 @@ Svar KUN med JSON:
                 // oel-modus vart slaatt paa midt i runden (effHcp/beerSlagFor sjekkar hmode)
                 if(on)setHmode(hmode==="stableford"?"stableford_beer":hmode==="stroke"?"stroke_beer":hmode);
                 else setHmode(hmode==="stableford_beer"?"stableford":hmode==="stroke_beer"?"stroke":hmode);},className:"bsm "+(beer?"bwa":"")},beer?"✓ På":"Av")),
-          h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},h("p",{style:{margin:0,fontSize:14,fontWeight:600}},"🐍 Slangen"),h("button",{onClick:()=>setSnake(!snake),className:"bsm "+(snake?"bon":"")},snake?"✓ På":"Av"))
+          h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},h("p",{style:{margin:0,fontSize:14,fontWeight:600}},"🐍 Slangen"),h("button",{onClick:()=>setSnake(!snake),className:"bsm "+(snake?"bon":"")},snake?"✓ På":"Av")),
+          rc&&h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},h("div",null,h("p",{style:{margin:0,fontSize:14,fontWeight:600}},"📤 Del rom-lenke"),h("p",{style:{margin:0,fontSize:11,color:"var(--muted)"}},rc)),h("button",{onClick:shareRoom,className:"bsm bsc"},"Del"))
         )
       ),
 

@@ -10,3 +10,8 @@ name = "AI_LIMITER"
 type = "ratelimit"
 namespace_id = "1001"
 simple = { limit = 30, period = 60 }
+
+# Anonym bruksstatistikk: berre dagstellarar (ingen person-/einingsdata)
+[[kv_namespaces]]
+binding = "STATS"
+id = "33586a41afdf40f7a6955fc30b20ad35"
