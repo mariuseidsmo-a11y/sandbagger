@@ -395,6 +395,7 @@ const EN2={
 "Under 0.2‰ → +0 slag":"Under 0.2‰ → +0 strokes","0.2–0.7‰ → +1 slag/hull":"0.2–0.7‰ → +1 stroke/hole","0.7–1.2‰ → +2 slag/hull":"0.7–1.2‰ → +2 strokes/hole","1.2‰+ → +3 slag/hull (maks)":"1.2‰+ → +3 strokes/hole (max)",
 "🍺 Under 0.2‰ — ingen ekstra slag ennå":"🍺 Under 0.2‰ — no extra strokes yet",
 "Ett veddemål på 9 hull: flest vunne hull vinner.":"One bet over 9 holes: most holes won wins.",
+"📜 Full personvernerklæring og vilkår →":"📜 Full privacy policy and terms →",
 "⚠️ Nines krever minst 3 spillere":"⚠️ Nines requires at least 3 players",
 "9 poeng fordeles mellom 3–4 spillere per hull. Med færre deles ingen poeng — velg et annet spill, eller legg til flere spillere.":"9 points are split between 3–4 players per hole. With fewer, no points are awarded — pick another game or add more players.",
 "⚠️ Scratch-modus: kun promille-sporing — ingen ekstra slag (rå slag teller).":"⚠️ Scratch mode: BAC tracking only — no extra strokes (raw strokes count).",
@@ -2073,7 +2074,8 @@ Svar KUN med JSON (ingen markdown):
         h("summary",{style:{fontSize:12,color:"var(--accent)",cursor:"pointer",fontWeight:600,listStyle:"none",padding:"6px 0"}},"🤖 AI-bildeanalyse — personvern"),
         h("p",{style:{fontSize:12,color:"var(--muted)",lineHeight:1.5,margin:"4px 0 8px"}},"Når du lager et AI-kallenavn fra et bilde, sendes bildet til Anthropic (Claude AI) for analyse. Bildet brukes kun der og da og lagres ikke permanent av appen. Du blir spurt om samtykke før bildet sendes første gang. Velger du å ikke sende bildet, får du et tilfeldig kallenavn i stedet.")
       ),
-      h("p",{style:{fontSize:11,color:"var(--text3)",margin:"8px 0 0",lineHeight:1.4,borderTop:"1px solid var(--border)",paddingTop:8}},"Sandbagger er et hobbyprosjekt laget for moro skyld. Bruk på eget ansvar.")
+      h("p",{style:{fontSize:11,color:"var(--text3)",margin:"8px 0 0",lineHeight:1.4,borderTop:"1px solid var(--border)",paddingTop:8}},"Sandbagger er et hobbyprosjekt laget for moro skyld. Bruk på eget ansvar."),
+      h("a",{href:"/personvern.html",target:"_blank",rel:"noopener",style:{display:"inline-block",marginTop:8,fontSize:12,color:"var(--accent)",fontWeight:600,textDecoration:"underline"}},"📜 Full personvernerklæring og vilkår →")
     )
   )
   );
