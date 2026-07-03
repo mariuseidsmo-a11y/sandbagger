@@ -416,6 +416,13 @@ const EN2={
 "Ingen matcher avgjort ennå — begge lag må ha spillere i en gruppe.":"No matches decided yet — both teams need players in a group.",
 "Fordel lag — trykk navn: Rødt → Blått → uten lag":"Assign teams — tap a name: Red → Blue → unassigned",
 "Navn dukker opp her når gruppene fører score.":"Names appear here once the groups start scoring.",
+"Velg lag — trykk navn for å bytte":"Pick teams — tap a name to switch",
+"⌚ Garmin-klokke (beta)":"⌚ Garmin watch (beta)",
+"Har du Garmin Approach? Scorene fra klokka kan fylles inn i rommet automatisk mens du spiller — via et lite PC-skript (krever at en PC står på hjemme og at klokka synker mot Garmin Golf-appen på telefonen underveis).":"Got a Garmin Approach? Scores from the watch can auto-fill into the room while you play — via a small PC script (requires a PC running at home and the watch syncing to the Garmin Golf phone app during the round).",
+"Slik setter du det opp →":"How to set it up →",
+"1. Engangsoppsett på PC-en: ":"1. One-time setup on the PC: ",
+"2. Når runden er startet i appen, kjør på PC-en:":"2. Once the round is started in the app, run on the PC:",
+"3. Spill med klokka som vanlig — scorene dukker opp i rommet av seg selv (1–2 min forsinkelse). Øl-trackeren fører du fortsatt i appen 🍺":"3. Play with the watch as usual — scores appear in the room by themselves (1–2 min delay). Beer tracking stays in the app 🍺",
 "Er dere flere grupper ute samtidig? Koble gruppene sammen og følg live leaderboard på tvers av alle.":"Playing in several groups at once? Link the groups together and follow a live leaderboard across all of them.",
 "Guttetur? Koble gruppene sammen — live leaderboard på tvers, og sammenlagt over flere runder. Gruppene kan stokkes fritt mellom rundene: spillerne følges på navn.":"Golf trip? Link the groups together — live leaderboard across groups, and overall standings across multiple rounds. Groups can be shuffled freely between rounds: players are tracked by name.",
 "Antall runder i turneringen":"Number of rounds in the tournament",
@@ -643,6 +650,7 @@ function tr(s){
   r=r.replace(/(\d+) spillere mangler lag/g,"$1 players missing a team");
   r=r.replace(/ · sesong/g," · season");
   r=r.replace(/ mot par/g," vs par");
+  r=r.replace(/^På lag med (.+) i periode 1:$/,"Teamed with $1 in period 1:");
   r=r.replace(/^([^\s]+) mot ([^\s]+)$/,"$1 vs $2");
   return r;
 }
@@ -1306,6 +1314,8 @@ function App(){
   const [bankerIdx,setBankerIdx]=useState(0);      // gjeldande/neste banker (peikar)
   const [bankerHoles,setBankerHoles]=useState({}); // {hull: pid} — banker FRYSAST per hull ved foerste score (elles omskreiv banker-bytte heile rundens pengehistorikk)
   const [sixesTeams,setSixesTeams]=useState({});   // {hole: {a:[id,id], b:[id,id]}}
+  const [teamPick,setTeamPick]=useState({});       // {pid:"A"|"B"} — manuelt lagvalg i scramble (rom)
+  const [sixesPick,setSixesPick]=useState("");     // pid: kven som er paa lag med spelar 1 i periode 1 (sixes)
   const [bingoClaims,setBingoClaims]=useState({}); // {hole: {bingo:pid, bango:pid, bongo:pid}} // {pid: ["replay","double","shield","bomb",...]}
   const [jokerActive,setJokerActive]=useState(null); // {pid, card, targetPid}
   const [jokerLog,setJokerLog]=useState([]); // [{hole, pid, card, targetPid}]
@@ -1434,14 +1444,14 @@ function App(){
 
   useEffect(()=>{
     if(scr!=="game"&&scr!=="setup")return;
-    const state={scr,step,players,gid,hmode,abon,apen,money,uval,beer,hc,hp,hi,hole,scores,ht,hd,sh,drks,rc,snake,wolfIdx,wolfPar,wolfLone,wolfHoles,bankerIdx,bankerHoles,rcDifficulty,rcRules,rcOverrides,sixesTeams,bingoClaims,jokerCards,preRoundDrinks,isHost,evLinks,lb:lbNow(),lbTeam:lbTeamNow(),courseName,courseSlope,courseCR,playerTees,savedAt:Date.now()};
+    const state={scr,step,players,gid,hmode,abon,apen,money,uval,beer,hc,hp,hi,hole,scores,ht,hd,sh,drks,rc,snake,wolfIdx,wolfPar,wolfLone,wolfHoles,bankerIdx,bankerHoles,rcDifficulty,rcRules,rcOverrides,sixesTeams,bingoClaims,jokerCards,preRoundDrinks,isHost,evLinks,teamPick,sixesPick,lb:lbNow(),lbTeam:lbTeamNow(),courseName,courseSlope,courseCR,playerTees,savedAt:Date.now()};
     sto(SK,state);
     // If host: broadcast to room
     if(isHost&&rc&&scr==="game"){
       setSyncStatus("syncing");
       syncSave(rc,state).then(()=>setSyncStatus("ok")).catch(()=>setSyncStatus("offline"));
     }
-  },[scr,step,players,scores,ht,hd,hole,drks,sh,gid,money,uval,beer,abon,apen,snake,hp,hi,hc,rc,hmode,wolfIdx,wolfPar,wolfLone,wolfHoles,bankerIdx,bankerHoles,rcDifficulty,rcRules,rcOverrides,sixesTeams,bingoClaims,jokerCards,preRoundDrinks,isHost,evLinks,courseName,courseSlope,courseCR,playerTees]);
+  },[scr,step,players,scores,ht,hd,hole,drks,sh,gid,money,uval,beer,abon,apen,snake,hp,hi,hc,rc,hmode,wolfIdx,wolfPar,wolfLone,wolfHoles,bankerIdx,bankerHoles,rcDifficulty,rcRules,rcOverrides,sixesTeams,bingoClaims,jokerCards,preRoundDrinks,isHost,evLinks,teamPick,sixesPick,courseName,courseSlope,courseCR,playerTees]);
 
   // Pre-runde-drinkar: stempl eit FAST tidspunkt (time) naar minsAgo vert sett/endra.
   // units-endringar beheld ankeret. Utan dette dreiv drinken i tid (alltid "X min
@@ -1510,6 +1520,8 @@ function App(){
       if(rd.hi)setHi(rd.hi);
       if(rd.hc)setHc(rd.hc);
       if(Array.isArray(rd.evLinks))setEvLinks(rd.evLinks);
+      if(rd.teamPick)setTeamPick(rd.teamPick);
+      if(typeof rd.sixesPick==="string")setSixesPick(rd.sixesPick);
       // Hull: foelg verten KUN naar verten faktisk byter hull — foer vart
       // gjesten tvinga tilbake kvart 4. sekund og kunne ikkje bla fritt.
       const hh=rd.hole||1;
@@ -1573,6 +1585,8 @@ function App(){
     if(s.bankerHoles)setBankerHoles(s.bankerHoles);
     if(s.preRoundDrinks)setPreRoundDrinks(s.preRoundDrinks);
     if(s.rcOverrides)setRcOverrides(s.rcOverrides);
+    if(s.teamPick)setTeamPick(s.teamPick);
+    if(typeof s.sixesPick==="string")setSixesPick(s.sixesPick);
     if(Array.isArray(s.evLinks))setEvLinks(s.evLinks);
     // legacy: gamle lagringar med enkelt-evCode → konverter til link
     else if(typeof s.evCode==="string"&&s.evCode)setEvLinks([{code:s.evCode,round:s.evRound||1,total:s.evTotal||0,format:"individual",name:""}]);
@@ -2115,6 +2129,19 @@ Svar KUN med JSON (ingen markdown):
     // Turneringslinkar nullstillast (nytt rom = ny tilkopling) — men
     // sb_my_events/sb_last_event hugsar turneringane for eitt-trykks retur
     setEvLinks([]);setEvData({});setEvOpen({});setEvDraft("");setEvCreated(null);
+    setTeamPick({});setSixesPick("");
+  }
+  // Effektiv spelarrekkefoelgje for Sixes: sixesPick vel kven som er paa lag
+  // med spelar 1 i periode 1 (H1-6) — rotasjonen foelgjer automatisk etterpaa.
+  // Brukt av BAADE panelet og gameT saa visning og pengar alltid er einige.
+  function sixesOrder(){
+    const ps4=[players[0],players[1],players[2],players[3]].filter(Boolean);
+    if(ps4.length<4)return ps4;
+    const valid=sixesPick&&ps4.some(p=>p.id===sixesPick)&&sixesPick!==ps4[0].id;
+    const pk=valid?sixesPick:ps4[1].id;
+    const partner=ps4.find(p=>p.id===pk);
+    const rest=ps4.filter(p=>p.id!==ps4[0].id&&p.id!==pk);
+    return [ps4[0],partner,rest[0],rest[1]];
   }
   // Felles oppstart av ny runde (heim, tstart, tjoin) — returnerer romkoden
   function startNewRound(){
@@ -2306,7 +2333,7 @@ Svar KUN med JSON (ingen markdown):
       return t;
     }
     if(gid==="sixes"){
-      const ps4=[players[0],players[1],players[2],players[3]].filter(Boolean);
+      const ps4=sixesOrder();
       if(ps4.length<4)return t;
       const PA=[[ps4[0].id,ps4[1].id],[ps4[2].id,ps4[3].id],[ps4[0].id,ps4[2].id],[ps4[1].id,ps4[3].id],[ps4[0].id,ps4[3].id],[ps4[1].id,ps4[2].id]];
       const team={a:0,b:0};
@@ -2496,6 +2523,19 @@ Svar KUN med JSON (ingen markdown):
       h("div",{style:{display:"flex",gap:8}},
         h("button",{style:{flex:1,padding:"11px",fontSize:13,fontWeight:700,borderRadius:8,border:"1.5px solid var(--accent-border)",background:"var(--accent-bg)",color:"var(--accent)",cursor:"pointer"},onClick:()=>{try{const data={},pf=["golf_","sb_","sandbagger","room_"];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&pf.some(p=>k.indexOf(p)===0))data[k]=localStorage.getItem(k);}const blob=new Blob([JSON.stringify(data)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="sandbagger-backup.json";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}catch(e){alert(tr("Eksport feilet: ")+tr(e.message));}}},"⬇ Eksporter"),
         h("button",{style:{flex:1,padding:"11px",fontSize:13,fontWeight:700,borderRadius:8,border:"1.5px solid var(--border2)",background:"var(--bg3)",color:"var(--text)",cursor:"pointer"},onClick:()=>{const inp=document.createElement("input");inp.type="file";inp.accept="application/json,.json";inp.onchange=ev=>{const f=ev.target.files&&ev.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const data=JSON.parse(rd.result);if(!data||typeof data!=="object")throw new Error("Ugyldig fil");let n=0;Object.keys(data).forEach(k=>{try{localStorage.setItem(k,data[k]);n++;}catch(_){}});alert(tr("Gjenopprettet ")+n+tr(" elementer. Appen lastes på nytt."));location.reload();}catch(err){alert(tr("Import feilet: ")+tr(err.message));}};rd.readAsText(f);};inp.click();}},"⬆ Importer")
+      )
+    ),
+    h("div",{className:"card",style:{marginTop:8}},
+      h("p",{style:{fontSize:13,fontWeight:700,margin:"0 0 4px"}},"⌚ Garmin-klokke (beta)"),
+      h("p",{style:{fontSize:12,color:"var(--muted)",margin:"0 0 8px",lineHeight:1.5}},"Har du Garmin Approach? Scorene fra klokka kan fylles inn i rommet automatisk mens du spiller — via et lite PC-skript (krever at en PC står på hjemme og at klokka synker mot Garmin Golf-appen på telefonen underveis)."),
+      h("details",null,
+        h("summary",{style:{fontSize:12,color:"var(--accent)",cursor:"pointer",fontWeight:600,listStyle:"none",padding:"4px 0"}},"Slik setter du det opp →"),
+        h("div",{style:{marginTop:6,padding:"10px 12px",background:"var(--bg3)",borderRadius:8}},
+          h("p",{style:{fontSize:11,color:"var(--muted)",margin:"0 0 6px",lineHeight:1.6}},"1. Engangsoppsett på PC-en: ",h("span",{className:"mono",style:{color:"var(--accent)"}},"python garmin/login.py")),
+          h("p",{style:{fontSize:11,color:"var(--muted)",margin:"0 0 6px",lineHeight:1.6}},"2. Når runden er startet i appen, kjør på PC-en:"),
+          h("p",{className:"mono",style:{fontSize:11,color:"var(--accent)",margin:"0 0 6px",wordBreak:"break-all"}},"python garmin/live.py "+(rc||"SAND-XXXXX")+" "+(prof?prof.name.split(" ")[0]:"DittNavn")),
+          h("p",{style:{fontSize:11,color:"var(--muted)",margin:0,lineHeight:1.6}},"3. Spill med klokka som vanlig — scorene dukker opp i rommet av seg selv (1–2 min forsinkelse). Øl-trackeren fører du fortsatt i appen 🍺")
+        )
       )
     ),
     h("div",{className:"card",style:{marginTop:8}},
@@ -3998,7 +4038,7 @@ Svar KUN med JSON:
       if(gid==="sixes"){
         // 4 players, switch partners every 6 holes
         // H1-6: A+B vs C+D, H7-12: A+C vs B+D, H13-18: A+D vs B+C
-        const [p0,p1,p2,p3]=[players[0],players[1],players[2],players[3]].filter(Boolean);
+        const [p0,p1,p2,p3]=sixesOrder();
         if(players.length!==4){
           return h("div",{className:"card ci"},
             h("p",{style:{fontSize:11,fontWeight:800,color:"var(--blue)",margin:"0 0 8px",letterSpacing:"0.1em",textTransform:"uppercase"}},"🔀 Sixes"),
@@ -4040,6 +4080,18 @@ Svar KUN med JSON:
             infoBtn
           ),
           info,
+          // Lagvalg: kven er paa lag med spelar 1 i periode 1?
+          h("div",{style:{marginBottom:12}},
+            h("p",{style:{fontSize:10,fontWeight:800,color:"var(--muted)",margin:"0 0 6px",letterSpacing:"0.08em",textTransform:"uppercase"}},"På lag med "+p0.name.split(" ")[0]+" i periode 1:"),
+            h("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+              [p1,p2,p3].map(p=>h("button",{key:p.id,onClick:()=>setSixesPick(p.id),style:{
+                padding:"8px 12px",fontSize:12,fontWeight:700,borderRadius:8,cursor:"pointer",
+                border:"1.5px solid "+(p.id===p1.id?"var(--blue)":"var(--border2)"),
+                background:p.id===p1.id?"var(--blue-bg)":"var(--bg3)",
+                color:p.id===p1.id?"var(--blue)":"var(--muted)"
+              }},p.name.split(" ")[0]+(p.id===p1.id?" ✓":"")))
+            )
+          ),
           // Current teams
           h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}},
             h("div",{style:{background:"rgba(90,143,184,0.12)",borderRadius:10,padding:"10px 12px",border:"1px solid rgba(90,143,184,0.3)"}},
@@ -4071,9 +4123,12 @@ Svar KUN med JSON:
       // ── SCRAMBLE (beste-ball lag) ───────────────────────────────────────
       if(gid==="scramble"){
         const parOf=hh=>hp[String(hh)]||HOLE_PARS[hh]||4;
-        const teams=players.length===4
-          ?[{name:"Lag A",col:"var(--blue)",bg:"rgba(90,143,184,0.12)",bd:"rgba(90,143,184,0.3)",members:[players[0],players[1]]},
-            {name:"Lag B",col:"var(--red)",bg:"rgba(201,84,68,0.12)",bd:"rgba(201,84,68,0.3)",members:[players[2],players[3]]}]
+        // Manuelt lagvalg (teamPick) med fornuftig default: to foerste = A,
+        // to siste = B. Med 2-3 spelarar: eitt felles lag.
+        const pickOf=(p,i)=>teamPick[p.id]||(i<Math.ceil(players.length/2)?"A":"B");
+        const teams=players.length>=4
+          ?[{name:"Lag A",key:"A",col:"var(--blue)",bg:"rgba(90,143,184,0.12)",bd:"rgba(90,143,184,0.3)",members:players.filter((p,i)=>pickOf(p,i)==="A")},
+            {name:"Lag B",key:"B",col:"var(--red)",bg:"rgba(201,84,68,0.12)",bd:"rgba(201,84,68,0.3)",members:players.filter((p,i)=>pickOf(p,i)==="B")}]
           :[{name:"Laget",col:"var(--accent)",bg:"var(--accent-bg)",bd:"var(--accent-border)",members:players}];
         const calc=mem=>{let tot=0,parTot=0,cnt=0;for(let hh=1;hh<=hc;hh++){const vals=mem.map(p=>netFor(p.id,hh)).filter(v=>v!=null);if(!vals.length)continue;tot+=Math.min(...vals);parTot+=parOf(hh);cnt++;}return{tot,parTot,cnt,rel:tot-parTot};};
         const curBest=mem=>{const vals=mem.map(p=>netFor(p.id,hole)).filter(v=>v!=null);return vals.length?Math.min(...vals):null;};
@@ -4089,6 +4144,21 @@ Svar KUN med JSON:
             h("p",{style:{fontSize:11,fontWeight:800,color:"var(--blue)",margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}},"🏌️ SCRAMBLE — Hull "+hole),infoBtn),
           info,
           h("p",{style:{fontSize:12,color:"var(--muted)",marginBottom:10,lineHeight:1.4}},"Beste (laveste) ball per hull teller for laget. Lavest total mot par vinner. Hver spiller logger sitt slag — appen velger den beste."),
+          // Lagvalg: trykk namn for aa byte lag (kun ved 4+ spelarar)
+          players.length>=4&&h("div",{style:{marginBottom:12}},
+            h("p",{style:{fontSize:10,fontWeight:800,color:"var(--muted)",margin:"0 0 6px",letterSpacing:"0.08em",textTransform:"uppercase"}},"Velg lag — trykk navn for å bytte"),
+            h("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+              players.map((p,i)=>{
+                const t=pickOf(p,i);
+                return h("button",{key:p.id,onClick:()=>setTeamPick(prev=>({...prev,[p.id]:t==="A"?"B":"A"})),style:{
+                  padding:"8px 12px",fontSize:12,fontWeight:700,borderRadius:8,cursor:"pointer",
+                  border:"1.5px solid "+(t==="A"?"var(--blue-border)":"var(--red-border)"),
+                  background:t==="A"?"var(--blue-bg)":"var(--red-bg)",
+                  color:t==="A"?"var(--blue)":"var(--red)"
+                }},p.name.split(" ")[0]+(t==="A"?" 🔵":" 🔴"));
+              })
+            )
+          ),
           h("div",{style:{display:"grid",gridTemplateColumns:td.length>1?"1fr 1fr":"1fr",gap:8,marginBottom:lead!=null||td.length>1?12:0}},
             td.map(t=>h("div",{key:t.name,style:{background:t.bg,borderRadius:10,padding:"10px 12px",border:"1px solid "+t.bd}},
               h("p",{style:{fontSize:10,color:t.col,fontWeight:800,marginBottom:4,textTransform:"uppercase",letterSpacing:"0.08em"}},t.name),
