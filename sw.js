@@ -1,6 +1,6 @@
 /* Sandbagger service worker — gjør appen installerbar + offline-tålig.
    Bump CACHE-versjonen når du vil tvinge ny app-shell-cache. */
-const CACHE = 'sandbagger-v3';
+const CACHE = 'sandbagger-v4';
 const SHELL = [
   '/',
   '/index.html',
@@ -35,9 +35,12 @@ self.addEventListener('fetch', (e) => {
 
   // App-dokumentet: network-first så brukeren alltid får siste versjon når
   // online, men faller tilbake til cache (offline-støtte).
+  // cache:'no-cache' tvinger revalidering mot serveren (billig 304 via ETag)
+  // — utan denne kunne HTTP-cachen (max-age=600) servere gammal HTML i opptil
+  // 10 min etter ein deploy, så nye funksjonar «mangla» på telefonen.
   if (req.mode === 'navigate' || url.pathname === '/' || url.pathname === '/index.html') {
     e.respondWith(
-      fetch(req)
+      fetch(req, { cache: 'no-cache' })
         .then((res) => {
           const copy = res.clone();
           caches.open(CACHE).then((c) => c.put(req, copy));
