@@ -397,6 +397,25 @@ const EN2={
 "Ett veddemål på 9 hull: flest vunne hull vinner.":"One bet over 9 holes: most holes won wins.",
 "📜 Full personvernerklæring og vilkår →":"📜 Full privacy policy and terms →",
 "🏆 Turnering (flere grupper)":"🏆 Tournament (multiple groups)","🏆 Turnering":"🏆 Tournament","🏆 Opprett turnering":"🏆 Create tournament",
+"🏆 Start turnering":"🏆 Start tournament","Bli med i turnering":"Join tournament","🏆 Turneringer":"🏆 Tournaments",
+"Ryder Cup, scramble-lag, sesong — flere grupper, felles leaderboard":"Ryder Cup, scramble teams, season — multiple groups, shared leaderboard",
+"Har du en TOUR-kode? Eller sjekk dine turneringer":"Got a TOUR code? Or check your tournaments",
+"Flere grupper, felles leaderboard. Velg format — del koden med de andre gruppene etterpå.":"Multiple groups, shared leaderboard. Pick a format — share the code with the other groups afterwards.",
+"Turneringsnavn (valgfritt)":"Tournament name (optional)","F.eks. Gutta-cupen 2026":"E.g. The Boys Cup 2026","Antall runder":"Number of rounds",
+"Scramble-lag":"Scramble teams","Sesongturnering":"Season tournament",
+"Alle mot alle på tvers av gruppene. Lavest netto mot par sammenlagt vinner — stableford vises også.":"Everyone against everyone across groups. Lowest net vs par overall wins — Stableford shown too.",
+"To lag: Rødt mot Blått. Hver gruppe er en match — laget med lavest snitt netto i gruppa vinner 1 poeng (uavgjort = ½). Fordel lagene i leaderboardet.":"Two teams: Red vs Blue. Each group is a match — the team with the lowest average net in the group wins 1 point (tie = ½). Assign teams in the leaderboard.",
+"Hver gruppe er ETT lag: beste ball per hull teller. Laget med lavest total mot par vinner. Velg Scramble som spill i gruppene.":"Each group is ONE team: best ball per hole counts. The team with the lowest total vs par wins. Pick Scramble as the game in each group.",
+"Åpen turnering hele sesongen med faste gutta — spill så mange runder dere vil. Flest stableford-poeng sammenlagt vinner.":"Open tournament all season with the regulars — play as many rounds as you like. Most Stableford points overall wins.",
+"⛳ Start vår gruppe nå":"⛳ Start our group now","👀 Se leaderboardet":"👀 View the leaderboard","📤 Del turneringskoden":"📤 Share the tournament code",
+"De andre gruppene velger «Bli med i turnering» og legger inn koden når de starter.":"The other groups choose «Join tournament» and enter the code when they start.",
+"⛳ Start gruppa vår i turneringen":"⛳ Start our group in the tournament","👀 Bare se leaderboardet":"👀 Just view the leaderboard","Mine turneringer":"My tournaments","⛳ Spill":"⛳ Play",
+"Koble runden til en eller flere turneringer — den kan telle i sesongturneringen og helge-cupen samtidig.":"Link the round to one or more tournaments — it can count in the season tournament and the weekend cup at the same time.",
+"Ny runde i turneringen? Sett rundenummer:":"New round in the tournament? Set the round number:",
+"Lag — beste ball":"Teams — best ball","Lag Rødt":"Team Red","Lag Blått":"Team Blue",
+"Ingen matcher avgjort ennå — begge lag må ha spillere i en gruppe.":"No matches decided yet — both teams need players in a group.",
+"Fordel lag — trykk navn: Rødt → Blått → uten lag":"Assign teams — tap a name: Red → Blue → unassigned",
+"Navn dukker opp her når gruppene fører score.":"Names appear here once the groups start scoring.",
 "Er dere flere grupper ute samtidig? Koble gruppene sammen og følg live leaderboard på tvers av alle.":"Playing in several groups at once? Link the groups together and follow a live leaderboard across all of them.",
 "Guttetur? Koble gruppene sammen — live leaderboard på tvers, og sammenlagt over flere runder. Gruppene kan stokkes fritt mellom rundene: spillerne følges på navn.":"Golf trip? Link the groups together — live leaderboard across groups, and overall standings across multiple rounds. Groups can be shuffled freely between rounds: players are tracked by name.",
 "Antall runder i turneringen":"Number of rounds in the tournament",
@@ -612,11 +631,19 @@ function tr(s){
   r=r.replace(/(\d+) hull vunnet/g,"$1 holes won");
   r=r.replace(/(\d+) grupper/g,"$1 groups");
   r=r.replace(/(\d+) runder/g,"$1 rounds");
+  r=r.replace(/ beste ball netto mot par · oppdateres automatisk/g," best ball net vs par · auto-refreshing");
+  r=r.replace(/ lavest snitt netto per gruppe vinner poenget · oppdateres automatisk/g," lowest average net per group wins the point · auto-refreshing");
   r=r.replace(/ netto mot par · oppdateres automatisk/g," net vs par · auto-refreshing");
   r=r.replace(/Runde (\d+) av (\d+)/g,"Round $1 of $2");
   r=r.replace(/Runde (\d+) — live/g,"Round $1 — live");
+  r=r.replace(/Runde (\d+)/g,"Round $1");
   r=r.replace(/Fortsett turneringen /g,"Continue tournament ");
   r=r.replace(/p stableford/g,"p Stableford");
+  r=r.replace(/ er klar! Del koden:/g," is ready! Share the code:");
+  r=r.replace(/(\d+) spillere mangler lag/g,"$1 players missing a team");
+  r=r.replace(/ · sesong/g," · season");
+  r=r.replace(/ mot par/g," vs par");
+  r=r.replace(/^([^\s]+) mot ([^\s]+)$/,"$1 vs $2");
   return r;
 }
 const h=function(){
@@ -728,6 +755,14 @@ const GAMES={
   banker:{id:"banker",label:"Banker",tag:"lag",short:"Én er Banker mot alle — roterer hvert hull",desc:"Bankeren spiller mot alle andre. Kan doble etter tee-shot. Banker vinner=betaling fra alle. Banker taper=betaler alle. Rollen roterer."},
   bingo:{id:"bingo",label:"Bingo Bango Bongo",tag:"poeng",short:"3 poeng per hull: grønn, nærmest pin, hole out",desc:"Tre poeng per hull: BINGO=første på grønn, BANGO=nærmest flagget når alle er på, BONGO=første til å hole out. Alle kan vinne uansett handicap!"},
   joker:{id:"joker",label:"Joker Golf",tag:"morsom",short:"Matchplay med jokerkort — tving motstandere!",desc:"Matchplay der alle starter med 4 jokerkort. Spill kort strategisk: REPLAY tvinger en motstander til å slå på nytt, DOUBLE dobler hull-verdien, SHIELD beskytter ditt resultat, BOMB gjør birdie/par verdt dobbelt. Flest hull vinner runden!"},
+};
+
+// ── TURNERINGSFORMAT ─────────────────────────────────────────────────────
+const EV_FORMATS={
+  individual:{icon:"🏆",label:"Sammenlagt",desc:"Alle mot alle på tvers av gruppene. Lavest netto mot par sammenlagt vinner — stableford vises også."},
+  ryder:{icon:"⚔️",label:"Ryder Cup",desc:"To lag: Rødt mot Blått. Hver gruppe er en match — laget med lavest snitt netto i gruppa vinner 1 poeng (uavgjort = ½). Fordel lagene i leaderboardet."},
+  scramble:{icon:"🤝",label:"Scramble-lag",desc:"Hver gruppe er ETT lag: beste ball per hull teller. Laget med lavest total mot par vinner. Velg Scramble som spill i gruppene."},
+  season:{icon:"📅",label:"Sesongturnering",desc:"Åpen turnering hele sesongen med faste gutta — spill så mange runder dere vil. Flest stableford-poeng sammenlagt vinner."}
 };
 
 // ── LANGUAGE ─────────────────────────────────────────────────────────────
@@ -1321,15 +1356,19 @@ function App(){
   const [preRoundDrinks,setPreRoundDrinks]=useState({}); // {pid: {units, minsAgo}} // {hole: {par:pid|null, lone:bool}}
   const [rejoin,setRejoin]=useState(false);
   const [rcode,setRcode]=useState("");
-  // Turnering (fleire grupper, felles leaderboard)
-  const [evCode,setEvCode]=useState("");   // TOUR-XXXXX — persistert + synca til gjester
+  // Turnering (fleire grupper, felles leaderboard). Eit rom kan vere kobla
+  // til FLEIRE turneringar samtidig (t.d. sesongturneringa + helge-cupen).
+  const [evLinks,setEvLinks]=useState([]); // [{code,round,total,format,name}] — persistert + synca til gjester
   const [evDraft,setEvDraft]=useState(""); // input-felt for aa koble til
-  const [evOpen,setEvOpen]=useState(false);
-  const [evData,setEvData]=useState(null); // {rooms:[{code,label,lb,hc,round}],roundsTotal,at}
-  const [evLoading,setEvLoading]=useState(false);
-  const [evRound,setEvRound]=useState(1);     // kva runde DETTE rommet hoeyrer til
-  const [evTotal,setEvTotal]=useState(1);     // tal rundar i turneringa
-  const [evNewTotal,setEvNewTotal]=useState(3); // stepper ved oppretting (guttetur = fleire rundar)
+  const [evOpen,setEvOpen]=useState({});   // {code:true} — kva leaderboard som er utvida
+  const [evData,setEvData]=useState({});   // {code:{reg,rooms:[{code,label,lb,lbTeam,hc,round}],at}}
+  const [evLoading,setEvLoading]=useState({});
+  const [evNewTotal,setEvNewTotal]=useState(3);            // stepper ved oppretting
+  const [evNewFormat,setEvNewFormat]=useState("individual"); // valt format ved oppretting
+  const [evNewName,setEvNewName]=useState("");             // turneringsnamn ved oppretting
+  const [evCreated,setEvCreated]=useState(null);           // {code} etter oppretting (tstart-skjermen)
+  const [viewCode,setViewCode]=useState("");               // tilskodar-visning (tview)
+  const [viewBack,setViewBack]=useState("home");           // kvar tview skal gaa tilbake til
 
   useEffect(()=>{},[theme]);
 
@@ -1395,14 +1434,14 @@ function App(){
 
   useEffect(()=>{
     if(scr!=="game"&&scr!=="setup")return;
-    const state={scr,step,players,gid,hmode,abon,apen,money,uval,beer,hc,hp,hi,hole,scores,ht,hd,sh,drks,rc,snake,wolfIdx,wolfPar,wolfLone,wolfHoles,bankerIdx,bankerHoles,rcDifficulty,rcRules,rcOverrides,sixesTeams,bingoClaims,jokerCards,preRoundDrinks,isHost,evCode,evRound,evTotal,lb:lbNow(),courseName,courseSlope,courseCR,playerTees,savedAt:Date.now()};
+    const state={scr,step,players,gid,hmode,abon,apen,money,uval,beer,hc,hp,hi,hole,scores,ht,hd,sh,drks,rc,snake,wolfIdx,wolfPar,wolfLone,wolfHoles,bankerIdx,bankerHoles,rcDifficulty,rcRules,rcOverrides,sixesTeams,bingoClaims,jokerCards,preRoundDrinks,isHost,evLinks,lb:lbNow(),lbTeam:lbTeamNow(),courseName,courseSlope,courseCR,playerTees,savedAt:Date.now()};
     sto(SK,state);
     // If host: broadcast to room
     if(isHost&&rc&&scr==="game"){
       setSyncStatus("syncing");
       syncSave(rc,state).then(()=>setSyncStatus("ok")).catch(()=>setSyncStatus("offline"));
     }
-  },[scr,step,players,scores,ht,hd,hole,drks,sh,gid,money,uval,beer,abon,apen,snake,hp,hi,hc,rc,hmode,wolfIdx,wolfPar,wolfLone,wolfHoles,bankerIdx,bankerHoles,rcDifficulty,rcRules,rcOverrides,sixesTeams,bingoClaims,jokerCards,preRoundDrinks,isHost,evCode,evRound,evTotal,courseName,courseSlope,courseCR,playerTees]);
+  },[scr,step,players,scores,ht,hd,hole,drks,sh,gid,money,uval,beer,abon,apen,snake,hp,hi,hc,rc,hmode,wolfIdx,wolfPar,wolfLone,wolfHoles,bankerIdx,bankerHoles,rcDifficulty,rcRules,rcOverrides,sixesTeams,bingoClaims,jokerCards,preRoundDrinks,isHost,evLinks,courseName,courseSlope,courseCR,playerTees]);
 
   // Pre-runde-drinkar: stempl eit FAST tidspunkt (time) naar minsAgo vert sett/endra.
   // units-endringar beheld ankeret. Utan dette dreiv drinken i tid (alltid "X min
@@ -1470,9 +1509,7 @@ function App(){
       if(rd.hp)setHp(rd.hp);
       if(rd.hi)setHi(rd.hi);
       if(rd.hc)setHc(rd.hc);
-      if(typeof rd.evCode==="string")setEvCode(rd.evCode);
-      if(typeof rd.evRound==="number")setEvRound(rd.evRound);
-      if(typeof rd.evTotal==="number")setEvTotal(rd.evTotal);
+      if(Array.isArray(rd.evLinks))setEvLinks(rd.evLinks);
       // Hull: foelg verten KUN naar verten faktisk byter hull — foer vart
       // gjesten tvinga tilbake kvart 4. sekund og kunne ikkje bla fritt.
       const hh=rd.hole||1;
@@ -1536,9 +1573,9 @@ function App(){
     if(s.bankerHoles)setBankerHoles(s.bankerHoles);
     if(s.preRoundDrinks)setPreRoundDrinks(s.preRoundDrinks);
     if(s.rcOverrides)setRcOverrides(s.rcOverrides);
-    if(typeof s.evCode==="string")setEvCode(s.evCode);
-    if(typeof s.evRound==="number")setEvRound(s.evRound);
-    if(typeof s.evTotal==="number")setEvTotal(s.evTotal);
+    if(Array.isArray(s.evLinks))setEvLinks(s.evLinks);
+    // legacy: gamle lagringar med enkelt-evCode → konverter til link
+    else if(typeof s.evCode==="string"&&s.evCode)setEvLinks([{code:s.evCode,round:s.evRound||1,total:s.evTotal||0,format:"individual",name:""}]);
     // Same regelrekkefoelgje paa alle einingar + etter reload (foer: restokka per mount,
     // saa reglane for ALLEREIE SPELTE hull endra seg)
     if(Array.isArray(s.rcRules)&&s.rcRules.length)setRcRules(s.rcRules);
@@ -1757,7 +1794,7 @@ Svar KUN med JSON (ingen markdown):
       }catch(e){alert(url);}
     }
   }
-  // ── TURNERING (fleire grupper, felles live leaderboard) ────────────────
+  // ── TURNERING (fleire grupper, fleire format, fleire samtidige) ────────
   // Kompakt stillingsblokk som verten broadcaster saman med rom-staten.
   // Turneringsvisninga les BERRE desse blokkene — ingen logikk-duplisering,
   // alltid same tal som gruppa sjoelv ser (netto inkl. promille-slag).
@@ -1773,76 +1810,299 @@ Svar KUN med JSON (ingen markdown):
       return {pid:p.id,n:p.name.split(" ")[0],thru,toPar,sf:sfTot(p)};
     });
   }
-  // Registrer dette rommet i turneringsregisteret og hugs koden.
-  // roundNo: kva runde rommet hoeyrer til (default = hoegaste eksisterande).
-  // createTotal: set tal rundar naar turneringa vert OPPRETTA (guttetur!).
-  async function attachEvent(codeRaw,roundNo,createTotal){
+  // Lag-blokk for Scramble-lag-turnering: HEILE gruppa som eitt lag,
+  // beste netto-ball per hull.
+  function lbTeamNow(){
+    let thru=0,rel=0;
+    for(let h_=1;h_<=hc;h_++){
+      const par=hp[String(h_)]||HOLE_PARS[h_]||4;
+      const nets=players.map(p=>{const s=scores[p.id]?.[h_];return s==null?null:s-holeStrokes(p,h_);}).filter(v=>v!=null);
+      if(!nets.length)continue;
+      thru++;rel+=Math.min(...nets)-par;
+    }
+    return {thru,rel};
+  }
+  const evNorm=n=>(n||"").trim().toLowerCase();
+  // "Mine turneringer" — lokal liste saa sesongturneringa alltid er eitt trykk unna
+  function rememberEvent(code,reg){
+    try{
+      const list=JSON.parse(localStorage.getItem("sb_my_events")||"[]").filter(e=>e.code!==code);
+      list.unshift({code,name:reg?.name||"",format:reg?.format||"individual",at:Date.now()});
+      localStorage.setItem("sb_my_events",JSON.stringify(list.slice(0,10)));
+    }catch(e){}
+  }
+  function myEvents(){try{return JSON.parse(localStorage.getItem("sb_my_events")||"[]");}catch(e){return[];}}
+  // Koble rommet til ein turnering (og/eller OPPRETT via opts.create).
+  // opts: {round, roomCode (naar rc-state ikkje er sett enno), create:{name,format,roundsTotal}}
+  async function attachEvent(codeRaw,opts){
+    opts=opts||{};
     const code=(codeRaw||"").trim().toUpperCase();
-    if(!code||!rc)return false;
+    const room=opts.roomCode||rc;
+    if(!code)return false;
     try{
       const reg=(await syncLoad(syncEventKey(code)))||{};
       if(!reg.rooms)reg.rooms={};
-      if(createTotal&&!reg.roundsTotal){reg.roundsTotal=createTotal;reg.createdAt=Date.now();}
-      const total=reg.roundsTotal||1;
-      let rnd=roundNo;
-      if(!rnd){const ex=Object.values(reg.rooms).map(r=>r.round||1);rnd=ex.length?Math.max(...ex):1;}
-      rnd=Math.max(1,Math.min(total,rnd));
-      reg.rooms[rc]={label:(players[0]?.name||"Gruppe").split(" ")[0]+"s gruppe",at:Date.now(),round:rnd};
+      if(opts.create&&!reg.createdAt){
+        reg.createdAt=Date.now();
+        reg.name=opts.create.name||"";
+        reg.format=opts.create.format||"individual";
+        reg.roundsTotal=opts.create.roundsTotal||0; // 0 = open/sesong
+        if(reg.format==="ryder")reg.teams={A:{name:"Lag Rødt",members:[]},B:{name:"Lag Blått",members:[]}};
+      }
+      const format=reg.format||"individual";
+      let rnd=opts.round;
+      if(room){
+        if(!rnd){
+          const ex=Object.values(reg.rooms).map(r=>r.round||1);
+          // Sesong: kvart rom er si eiga runde. Elles: bli med i gjeldande runde.
+          rnd=format==="season"?(ex.length?Math.max(...ex)+1:1):(ex.length?Math.max(...ex):1);
+        }
+        if(reg.roundsTotal)rnd=Math.max(1,Math.min(reg.roundsTotal,rnd));
+        reg.rooms[room]={label:(players[0]?.name||prof?.name||"Gruppe").split(" ")[0]+"s gruppe",at:Date.now(),round:rnd};
+      }
       delete reg.syncAt;
       await syncSave(syncEventKey(code),reg);
-      setEvCode(code);setEvRound(rnd);setEvTotal(total);
+      if(room)setEvLinks(ls=>[...ls.filter(l=>l.code!==code),{code,round:rnd||1,total:reg.roundsTotal||0,format,name:reg.name||""}]);
+      rememberEvent(code,reg);
       try{localStorage.setItem("sb_last_event",code);}catch(e){}
       return true;
     }catch(e){return false;}
   }
-  // Flytt dette rommet til ein annan runde i turneringa (t.d. runde 2 paa dag 2)
-  async function setRoundInEvent(newRnd){
-    if(!evCode||!rc)return;
-    const rnd=Math.max(1,Math.min(evTotal||1,newRnd));
-    setEvRound(rnd);
+  // Koble rommet fraa ein turnering (turneringa lever vidare)
+  async function detachEvent(code){
+    setEvLinks(ls=>ls.filter(l=>l.code!==code));
+    setEvOpen(o=>({...o,[code]:false}));
     try{
-      const reg=(await syncLoad(syncEventKey(evCode)))||{};
+      const reg=(await syncLoad(syncEventKey(code)))||{};
+      if(reg.rooms&&rc&&reg.rooms[rc]){delete reg.rooms[rc];delete reg.syncAt;await syncSave(syncEventKey(code),reg);}
+    }catch(e){}
+  }
+  // Flytt rommet til ein annan runde i EIN gitt turnering
+  async function setRoundInEvent(code,newRnd){
+    const link=evLinks.find(l=>l.code===code);if(!link||!rc)return;
+    const cap=link.total||99;
+    const rnd=Math.max(1,Math.min(cap,newRnd));
+    setEvLinks(ls=>ls.map(l=>l.code===code?{...l,round:rnd}:l));
+    try{
+      const reg=(await syncLoad(syncEventKey(code)))||{};
       if(!reg.rooms)reg.rooms={};
       if(reg.rooms[rc])reg.rooms[rc].round=rnd;
       else reg.rooms[rc]={label:(players[0]?.name||"Gruppe").split(" ")[0]+"s gruppe",at:Date.now(),round:rnd};
       delete reg.syncAt;
-      await syncSave(syncEventKey(evCode),reg);
+      await syncSave(syncEventKey(code),reg);
     }catch(e){}
   }
-  function shareEvent(codeOverride){
-    const code=codeOverride||evCode;if(!code)return;
+  // Ryder Cup: flytt eit namn mellom laga (kven som helst i turneringa kan rydde)
+  async function toggleTeam(code,name){
+    try{
+      const reg=(await syncLoad(syncEventKey(code)))||{};
+      if(!reg.teams)reg.teams={A:{name:"Lag Rødt",members:[]},B:{name:"Lag Blått",members:[]}};
+      const k=evNorm(name);
+      const inA=reg.teams.A.members.includes(k);
+      const inB=reg.teams.B.members.includes(k);
+      reg.teams.A.members=reg.teams.A.members.filter(x=>x!==k);
+      reg.teams.B.members=reg.teams.B.members.filter(x=>x!==k);
+      if(!inA&&!inB)reg.teams.A.members.push(k);      // utan lag → Rødt
+      else if(inA)reg.teams.B.members.push(k);        // Rødt → Blått
+      /* inB → utan lag (fjerna) */
+      delete reg.syncAt;
+      await syncSave(syncEventKey(code),reg);
+      await loadEvent(code);
+    }catch(e){}
+  }
+  function shareEvent(code){
+    if(!code)return;
     const txt=(lang==="en"
-      ?"Link your group to our Sandbagger tournament! Code: "+code+" — enter it under Players when you start your round. Live leaderboard across all groups!"
-      :"Koble gruppa di til turneringen vår i Sandbagger! Turneringskode: "+code+" — legg den inn under Spillere når dere starter runden. Live leaderboard på tvers av gruppene!");
+      ?"Link your group to our Sandbagger tournament! Code: "+code+" — enter it when you start your round (or under Players). Live leaderboard across all groups!"
+      :"Koble gruppa di til turneringen vår i Sandbagger! Turneringskode: "+code+" — legg den inn når dere starter runden (eller under Spillere). Live leaderboard på tvers av gruppene!");
     if(navigator.share){navigator.share({title:"Sandbagger",text:txt,url:"https://sandbagger.no"}).catch(()=>{});}
     else{try{navigator.clipboard.writeText(txt);alert(lang==="en"?"Copied!":"Kopiert!");}catch(e){alert(txt);}}
   }
-  // Hent stillinga: register → kvart roms broadcast (lb-blokk).
-  // Gamle rundars rom ligg att i registeret — sammenlagt-lista les alt.
-  async function loadEvent(){
-    if(!evCode)return;
-    setEvLoading(true);
+  // Hent stillinga for EIN turnering: register → kvart roms broadcast
+  async function loadEvent(code){
+    if(!code)return;
+    setEvLoading(l=>({...l,[code]:true}));
     try{
-      const reg=await syncLoad(syncEventKey(evCode));
-      const codes=Object.keys(reg?.rooms||{});
-      const rooms=[];
-      for(const c of codes){
-        const rd=await syncLoad(c);
-        if(rd&&Array.isArray(rd.lb))rooms.push({code:c,label:reg.rooms[c]?.label||c.slice(-5),lb:rd.lb,hc:rd.hc||18,round:reg.rooms[c]?.round||1});
+      const reg=await syncLoad(syncEventKey(code));
+      if(reg){
+        const codes=Object.keys(reg.rooms||{});
+        const rooms=[];
+        for(const c of codes){
+          const rd=await syncLoad(c);
+          if(rd)rooms.push({code:c,label:reg.rooms[c]?.label||c.slice(-5),lb:Array.isArray(rd.lb)?rd.lb:[],lbTeam:rd.lbTeam||null,hc:rd.hc||18,round:reg.rooms[c]?.round||1});
+        }
+        setEvData(d=>({...d,[code]:{reg,rooms,at:Date.now()}}));
+        // synk link-metadata fraa registeret (namn/format/rundetal kan endrast)
+        setEvLinks(ls=>ls.map(l=>l.code!==code?l:{...l,total:reg.roundsTotal||0,format:reg.format||"individual",name:reg.name||"",round:(reg.rooms?.[rc]?.round)||l.round}));
       }
-      setEvData({rooms,roundsTotal:reg?.roundsTotal||1,at:Date.now()});
-      if(reg?.roundsTotal)setEvTotal(reg.roundsTotal);
-      const own=reg?.rooms?.[rc];if(own&&own.round)setEvRound(own.round);
     }catch(e){/* behald forrige visning */}
-    setEvLoading(false);
+    setEvLoading(l=>({...l,[code]:false}));
   }
-  // Poll stillinga kvart 12. sekund medan leaderboardet er ope
+  // Poll opne leaderboard (og tilskodar-visninga) kvart 12. sekund
   useEffect(()=>{
-    if(!evOpen||!evCode)return;
-    loadEvent();
-    const t=setInterval(loadEvent,12000);
-    return ()=>clearInterval(t);
-  },[evOpen,evCode]);
+    const codes=Object.keys(evOpen).filter(c=>evOpen[c]);
+    if(scr==="tview"&&viewCode&&!codes.includes(viewCode))codes.push(viewCode);
+    if(!codes.length)return;
+    let stop=false;
+    const load=async()=>{for(const c of codes){if(stop)break;await loadEvent(c);}};
+    load();
+    const t=setInterval(load,12000);
+    return ()=>{stop=true;clearInterval(t);};
+  },[JSON.stringify(evOpen),viewCode,scr]);
+
+  // Felles leaderboard-renderer for ein turnering — brukt baade i runden og
+  // i tilskodar-visninga. Formatspesifikk: individual/season/ryder/scramble.
+  function evBoard(code){
+    const d=evData[code];
+    if(!d)return h("p",{style:{fontSize:13,color:"var(--muted)",margin:0}},h("span",{className:"sb-spinner"}),"Henter stillingen...");
+    const reg=d.reg||{},rooms=d.rooms||[];
+    const format=reg.format||"individual";
+    const fmt=v=>{const r=Math.round(v*10)/10;return r===0?"E":r>0?"+"+r:String(r);};
+    const col=(has,tp)=>!has?"var(--muted-dim)":tp<0?"var(--green)":tp>0?"var(--red)":"var(--accent)";
+    const secHead=(txt,c)=>h("p",{style:{fontSize:10,fontWeight:800,color:c||"var(--gold)",margin:"0 0 6px",letterSpacing:"0.1em",textTransform:"uppercase"}},txt);
+    const foot=txt=>h("p",{style:{fontSize:10,color:"var(--text3)",margin:"10px 0 0",textAlign:"center"}},txt);
+    const empty=h("p",{style:{fontSize:13,color:"var(--muted)",margin:0}},"Ingen scorer ennå — stillingen dukker opp når gruppene begynner å føre.");
+
+    // ── SCRAMBLE-LAG: kvar gruppe er eitt lag (beste ball) ──
+    if(format==="scramble"){
+      const teams=rooms.filter(r=>r.lbTeam&&r.lbTeam.thru>0).map(r=>({label:r.label,round:r.round,thru:r.lbTeam.thru,rel:r.lbTeam.rel,hcR:r.hc}));
+      teams.sort((a,b)=>a.rel!==b.rel?a.rel-b.rel:b.thru-a.thru);
+      if(!teams.length)return empty;
+      return h("div",null,
+        secHead("Lag — beste ball"),
+        teams.map((t,i)=>h("div",{key:t.label+i,style:{display:"flex",alignItems:"center",gap:8,padding:"7px 0",borderBottom:i<teams.length-1?"1px solid var(--border)":"none"}},
+          h("span",{style:{fontSize:12,minWidth:22,color:i===0?"var(--gold)":"var(--muted)",fontWeight:800}},(i+1)+"."),
+          h("div",{style:{flex:1,minWidth:0}},
+            h("p",{style:{margin:0,fontSize:14,fontWeight:700}},t.label),
+            h("p",{style:{margin:0,fontSize:10,color:"var(--muted)"}},"Runde "+t.round)
+          ),
+          h("span",{style:{fontSize:11,color:"var(--muted)",flexShrink:0}},t.thru+"/"+(t.hcR||18)),
+          h("span",{style:{fontSize:17,fontWeight:900,minWidth:46,textAlign:"right",flexShrink:0,color:col(true,t.rel)}},fmt(t.rel))
+        )),
+        foot(rooms.length+" grupper · beste ball netto mot par · oppdateres automatisk")
+      );
+    }
+
+    // ── RYDER CUP: to lag, 1 poeng per gruppe-match ──
+    if(format==="ryder"){
+      const A=reg.teams?.A||{name:"Lag Rødt",members:[]};
+      const B=reg.teams?.B||{name:"Lag Blått",members:[]};
+      let ptsA=0,ptsB=0;const matches=[];const seen={};
+      rooms.forEach(r=>{
+        (r.lb||[]).forEach(e=>{if(e.n)seen[evNorm(e.n)]=e.n;});
+        const ea=(r.lb||[]).filter(e=>e.thru>0&&A.members.includes(evNorm(e.n)));
+        const eb=(r.lb||[]).filter(e=>e.thru>0&&B.members.includes(evNorm(e.n)));
+        if(!ea.length||!eb.length)return;
+        const avg=list=>list.reduce((s,e)=>s+e.toPar,0)/list.length;
+        const dA=avg(ea),dB=avg(eb);
+        let res;
+        if(Math.abs(dA-dB)<1e-9){ptsA+=0.5;ptsB+=0.5;res="½ – ½";}
+        else if(dA<dB){ptsA+=1;res=A.name;}
+        else{ptsB+=1;res=B.name;}
+        matches.push({label:r.label+" · R"+(r.round||1),res,detail:fmt(dA)+" mot "+fmt(dB)});
+      });
+      const unassigned=Object.keys(seen).filter(k=>!A.members.includes(k)&&!B.members.includes(k));
+      const pf=v=>{const w=Math.floor(v);return v%1===0?String(v):(w>0?w+"½":"½");};
+      return h("div",null,
+        h("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:14,marginBottom:10}},
+          h("div",{style:{textAlign:"center"}},
+            h("p",{style:{margin:0,fontSize:11,fontWeight:800,color:"var(--red)",textTransform:"uppercase",letterSpacing:"0.06em"}},A.name),
+            h("p",{style:{margin:0,fontSize:34,fontWeight:900,color:"var(--red)",fontFamily:"'Bebas Neue',Impact"}},pf(ptsA))
+          ),
+          h("p",{style:{margin:0,fontSize:16,color:"var(--muted)",fontWeight:700}},"—"),
+          h("div",{style:{textAlign:"center"}},
+            h("p",{style:{margin:0,fontSize:11,fontWeight:800,color:"var(--blue)",textTransform:"uppercase",letterSpacing:"0.06em"}},B.name),
+            h("p",{style:{margin:0,fontSize:34,fontWeight:900,color:"var(--blue)",fontFamily:"'Bebas Neue',Impact"}},pf(ptsB))
+          )
+        ),
+        matches.length===0&&h("p",{style:{fontSize:12,color:"var(--muted)",margin:"0 0 8px",textAlign:"center"}},"Ingen matcher avgjort ennå — begge lag må ha spillere i en gruppe."),
+        matches.map((m,i)=>h("div",{key:i,style:{display:"flex",justifyContent:"space-between",gap:8,padding:"6px 0",borderBottom:"1px solid var(--border)"}},
+          h("span",{style:{fontSize:12,color:"var(--muted)",flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},m.label),
+          h("span",{style:{fontSize:11,color:"var(--text3)",flexShrink:0}},m.detail),
+          h("span",{style:{fontSize:12,fontWeight:800,color:"var(--accent)",flexShrink:0}},m.res)
+        )),
+        // Lag-fordeling: trykk namn for aa flytte Raudt → Blaatt → ut
+        h("div",{style:{marginTop:10}},
+          secHead("Fordel lag — trykk navn: Rødt → Blått → uten lag","var(--accent)"),
+          h("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+            Object.keys(seen).sort().map(k=>{
+              const inA=A.members.includes(k),inB=B.members.includes(k);
+              return h("button",{key:k,onClick:()=>toggleTeam(code,seen[k]),style:{
+                padding:"7px 12px",fontSize:12,fontWeight:700,borderRadius:8,cursor:"pointer",
+                border:"1.5px solid "+(inA?"var(--red-border)":inB?"var(--blue-border)":"var(--border2)"),
+                background:inA?"var(--red-bg)":inB?"var(--blue-bg)":"var(--bg3)",
+                color:inA?"var(--red)":inB?"var(--blue)":"var(--muted)"
+              }},seen[k]+(inA?" 🔴":inB?" 🔵":""));
+            }),
+            Object.keys(seen).length===0&&h("p",{style:{fontSize:11,color:"var(--muted)",margin:0}},"Navn dukker opp her når gruppene fører score.")
+          ),
+          unassigned.length>0&&h("p",{style:{fontSize:10,color:"var(--gold)",margin:"6px 0 0"}},unassigned.length+" spillere mangler lag")
+        ),
+        foot(rooms.length+" grupper · lavest snitt netto per gruppe vinner poenget · oppdateres automatisk")
+      );
+    }
+
+    // ── INDIVIDUAL + SESONG: sammenlagt paa namn + live gjeldande runde ──
+    const total=reg.roundsTotal||0;
+    const isSeason=format==="season";
+    const multi=isSeason||total>1||rooms.some(r=>(r.round||1)>1);
+    const curRound=rooms.length?Math.max(...rooms.map(r=>r.round||1)):1;
+    const liveRooms=multi?rooms.filter(r=>(r.round||1)===curRound):rooms;
+    const live=[];
+    liveRooms.forEach(r=>(r.lb||[]).forEach(e=>live.push({...e,grp:r.label,hcR:r.hc})));
+    live.sort((a,b)=>{
+      if((a.thru>0)!==(b.thru>0))return a.thru>0?-1:1;
+      if(a.toPar!==b.toPar)return a.toPar-b.toPar;
+      return b.thru-a.thru;
+    });
+    let agg=[];
+    if(multi){
+      const m={};
+      rooms.forEach(r=>{const rnd=r.round||1;(r.lb||[]).forEach(e=>{
+        const k=evNorm(e.n);if(!k)return;
+        if(!m[k])m[k]={n:e.n,rounds:{}};
+        const prev=m[k].rounds[rnd];
+        if(!prev||e.thru>prev.thru)m[k].rounds[rnd]={toPar:e.toPar,sf:e.sf,thru:e.thru};
+      });});
+      agg=Object.values(m).map(a=>{
+        let toPar=0,sf=0,played=0,thru=0;
+        Object.values(a.rounds).forEach(rr=>{if(rr.thru>0){toPar+=rr.toPar;sf+=rr.sf;played++;thru+=rr.thru;}});
+        return {n:a.n,toPar,sf,played,thru};
+      }).sort((x,y)=>{
+        if((x.played>0)!==(y.played>0))return x.played>0?-1:1;
+        if(isSeason){if(x.sf!==y.sf)return y.sf-x.sf;return x.toPar-y.toPar;} // sesong: flest stableford-poeng
+        if(x.toPar!==y.toPar)return x.toPar-y.toPar;
+        return y.thru-x.thru;
+      });
+    }
+    if(live.length===0&&agg.length===0)return empty;
+    return h("div",null,
+      multi&&agg.length>0&&h("div",{style:{marginBottom:14}},
+        secHead("Sammenlagt"),
+        agg.map((e,i)=>h("div",{key:"agg_"+e.n+i,style:{display:"flex",alignItems:"center",gap:8,padding:"7px 0",borderBottom:i<agg.length-1?"1px solid var(--border)":"none"}},
+          h("span",{style:{fontSize:12,minWidth:22,color:i===0?"var(--gold)":"var(--muted)",fontWeight:800}},(i+1)+"."),
+          h("div",{style:{flex:1,minWidth:0}},
+            h("p",{style:{margin:0,fontSize:14,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},e.n),
+            h("p",{style:{margin:0,fontSize:10,color:"var(--muted)"}},e.played+" runder · "+(isSeason?fmt(e.toPar)+" mot par":e.sf+"p stableford"))
+          ),
+          h("span",{style:{fontSize:17,fontWeight:900,minWidth:52,textAlign:"right",flexShrink:0,color:isSeason?"var(--accent)":col(e.played>0,e.toPar)}},e.played>0?(isSeason?e.sf+"p":fmt(e.toPar)):"—")
+        ))
+      ),
+      live.length>0&&h("div",null,
+        multi&&secHead("Runde "+curRound+" — live","var(--accent)"),
+        live.map((e,i)=>h("div",{key:e.pid+"_"+i,style:{display:"flex",alignItems:"center",gap:8,padding:"7px 0",borderBottom:i<live.length-1?"1px solid var(--border)":"none"}},
+          h("span",{style:{fontSize:12,minWidth:22,color:i===0?"var(--gold)":"var(--muted)",fontWeight:800}},(i+1)+"."),
+          h("div",{style:{flex:1,minWidth:0}},
+            h("p",{style:{margin:0,fontSize:14,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},e.n),
+            h("p",{style:{margin:0,fontSize:10,color:"var(--muted)"}},e.grp)
+          ),
+          h("span",{style:{fontSize:11,color:"var(--muted)",flexShrink:0}},e.thru>0?e.thru+"/"+(e.hcR||18):"—"),
+          h("span",{style:{fontSize:17,fontWeight:900,minWidth:46,textAlign:"right",flexShrink:0,color:col(e.thru>0,e.toPar)}},e.thru>0?fmt(e.toPar):"—")
+        ))
+      ),
+      foot(rooms.length+" grupper"+(isSeason?" · sesong":total>1?" · "+total+" runder":"")+" · netto mot par · oppdateres automatisk")
+    );
+  }
 
   // Nullstill ALT runde-state ved ny runde — inkl. ht/bankerHoles/preRoundDrinks
   // (gamle tidslaaser ville elles gitt feil promille-slag i neste runde)
@@ -1852,9 +2112,16 @@ Svar KUN med JSON (ingen markdown):
     setBankerIdx(0);setBankerHoles({});setSixesTeams({});setBingoClaims({});
     setJokerCards({});setPreRoundDrinks({});setRcOverrides({});setRcRerolls({});
     setRcRules(shuf(RULE_CHANGE));
-    // evCode nullstillast (nytt rom = ny tilkopling), men sb_last_event i
-    // localStorage hugsar turneringa — oppsettet tilbyr "Fortsett turneringen"
-    setEvCode("");setEvData(null);setEvOpen(false);setEvDraft("");setEvRound(1);setEvTotal(1);
+    // Turneringslinkar nullstillast (nytt rom = ny tilkopling) — men
+    // sb_my_events/sb_last_event hugsar turneringane for eitt-trykks retur
+    setEvLinks([]);setEvData({});setEvOpen({});setEvDraft("");setEvCreated(null);
+  }
+  // Felles oppstart av ny runde (heim, tstart, tjoin) — returnerer romkoden
+  function startNewRound(){
+    const ps=prof?[prof]:[];setPlayers(ps);setStep(0);
+    const _A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let code="SAND-";for(let _i=0;_i<5;_i++)code+=_A[Math.floor(Math.random()*_A.length)];
+    setRc(code);setIsHost(true);resetRound();setSc("setup");
+    return code;
   }
   function addDrink(pid,units){setDrks(d=>({...d,[pid]:[...(d[pid]||[]),{units,time:Date.now()}]}));}
   // Tar i bruk en bane (allerede mappet til {name,cr,slope,hp,hi,hc}) + cacher den lokalt
@@ -2183,12 +2450,10 @@ Svar KUN med JSON (ingen markdown):
     ),
     h("h2",{style:{fontSize:20,fontWeight:800,margin:"0 0 16px"}},L("startRound").replace("⛳ ","")),
     h("div",{style:{display:"flex",flexDirection:"column",gap:10}},
-      h("button",{className:"card ci",style:{textAlign:"left",cursor:"pointer"},onClick:()=>{
-        const ps=prof?[prof]:[];setPlayers(ps);setStep(0);
-        const _A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let code="SAND-";for(let _i=0;_i<5;_i++)code+=_A[Math.floor(Math.random()*_A.length)];setRc(code);setIsHost(true);
-        resetRound();setSc("setup");
-      }},h("p",{style:{margin:"0 0 4px",fontWeight:800,fontSize:16,color:"var(--text)"}},L("startRound")),h("p",{style:{margin:0,fontSize:13,color:"#aeb6d4"}},L("startRoundDesc"))),
-      h("button",{className:"card cs",style:{textAlign:"left",cursor:"pointer"},onClick:()=>setSc("joinroom")},h("p",{style:{margin:"0 0 4px",fontWeight:800,fontSize:16,color:"var(--accent)"}},L("joinRound")),h("p",{style:{margin:0,fontSize:13,color:"#c4bca8"}},L("joinRoundDesc")))
+      h("button",{className:"card ci",style:{textAlign:"left",cursor:"pointer"},onClick:()=>{startNewRound();}},h("p",{style:{margin:"0 0 4px",fontWeight:800,fontSize:16,color:"var(--text)"}},L("startRound")),h("p",{style:{margin:0,fontSize:13,color:"#aeb6d4"}},L("startRoundDesc"))),
+      h("button",{className:"card cs",style:{textAlign:"left",cursor:"pointer"},onClick:()=>setSc("joinroom")},h("p",{style:{margin:"0 0 4px",fontWeight:800,fontSize:16,color:"var(--accent)"}},L("joinRound")),h("p",{style:{margin:0,fontSize:13,color:"#c4bca8"}},L("joinRoundDesc"))),
+      h("button",{className:"card cw",style:{textAlign:"left",cursor:"pointer"},onClick:()=>{setEvCreated(null);setSc("tstart");}},h("p",{style:{margin:"0 0 4px",fontWeight:800,fontSize:16,color:"var(--gold)"}},"🏆 Start turnering"),h("p",{style:{margin:0,fontSize:13,color:"#c9b28a"}},"Ryder Cup, scramble-lag, sesong — flere grupper, felles leaderboard")),
+      h("button",{className:"card",style:{textAlign:"left",cursor:"pointer",border:"1.5px solid var(--amber-border)"},onClick:()=>{setEvDraft("");setSc("tjoin");}},h("p",{style:{margin:"0 0 4px",fontWeight:800,fontSize:16,color:"var(--gold)"}},"Bli med i turnering"),h("p",{style:{margin:0,fontSize:13,color:"#8890a0"}},"Har du en TOUR-kode? Eller sjekk dine turneringer"))
     )
   )
   );
@@ -2311,6 +2576,107 @@ rfState({...rd,players:allPlayers,scr:"game"});}},"Bli med")
     )
   );
 
+  // ── TURNERING: START ─────────────────────────────────────────────────────
+  if(scr==="tstart")return h("div",{className:"sb-screen",key:"s_"+scr,style:{position:"relative",minHeight:"100vh",background:"var(--bg)",padding:"1rem 0"}},
+    h(PhotoBg,{screenKey:"klar"}),
+    h("div",{style:{position:"relative",zIndex:1,padding:"64px 20px 80px"}},
+      h("button",{className:"btnback",onClick:()=>setSc("home")},"← Hjem"),
+      h("h2",{style:{fontSize:22,fontWeight:800,margin:"0 0 4px"}},"🏆 Start turnering"),
+      h("p",{style:{fontSize:13,color:"var(--muted)",margin:"0 0 16px",lineHeight:1.5}},"Flere grupper, felles leaderboard. Velg format — del koden med de andre gruppene etterpå."),
+      !evCreated&&h("div",null,
+        h("div",{className:"card"},
+          h("label",{className:"lbl"},"Turneringsnavn (valgfritt)"),
+          h("input",{placeholder:"F.eks. Gutta-cupen 2026",value:evNewName,onChange:e=>setEvNewName(e.target.value),style:{marginBottom:4}})
+        ),
+        Object.keys(EV_FORMATS).map(fk=>{
+          const f=EV_FORMATS[fk];const sel=evNewFormat===fk;
+          return h("button",{key:fk,onClick:()=>setEvNewFormat(fk),className:"card",style:{textAlign:"left",cursor:"pointer",width:"100%",border:"1.5px solid "+(sel?"var(--accent)":"var(--border)"),background:sel?"var(--accent-bg)":"var(--card)"}},
+            h("p",{style:{margin:"0 0 4px",fontWeight:800,fontSize:15,color:sel?"var(--accent)":"var(--text)"}},f.icon+" "+f.label),
+            h("p",{style:{margin:0,fontSize:12,color:"var(--muted)",lineHeight:1.5}},f.desc)
+          );
+        }),
+        evNewFormat!=="season"&&h("div",{className:"card",style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
+          h("p",{style:{fontSize:13,fontWeight:700,margin:0}},"Antall runder"),
+          h("div",{style:{display:"flex",alignItems:"center",gap:10}},
+            h("button",{onClick:()=>setEvNewTotal(x=>Math.max(1,x-1)),style:{width:38,height:38,borderRadius:"50%",border:"1px solid var(--accent-border)",background:"var(--bg3)",color:"var(--accent)",fontSize:17,cursor:"pointer",fontWeight:700}},"−"),
+            h("span",{style:{fontSize:17,fontWeight:800,color:"var(--accent)",minWidth:24,textAlign:"center"}},evNewTotal),
+            h("button",{onClick:()=>setEvNewTotal(x=>Math.min(14,x+1)),style:{width:38,height:38,borderRadius:"50%",border:"1px solid var(--accent-border)",background:"var(--bg3)",color:"var(--accent)",fontSize:17,cursor:"pointer",fontWeight:700}},"+")
+          )
+        ),
+        h("button",{className:"btn btnp",onClick:async()=>{
+          const c=makeEventCode();
+          const ok=await attachEvent(c,{create:{name:evNewName.trim(),format:evNewFormat,roundsTotal:evNewFormat==="season"?0:evNewTotal}});
+          if(ok)setEvCreated({code:c});else alert(tr("Klarte ikke opprette turneringen — sjekk nettet og prøv igjen."));
+        }},"🏆 Opprett turnering")
+      ),
+      evCreated&&h("div",null,
+        h("div",{className:"card cs",style:{textAlign:"center"}},
+          h("p",{style:{fontSize:12,color:"var(--muted)",margin:"0 0 6px"}},(evNewName.trim()||EV_FORMATS[evNewFormat].label)+" er klar! Del koden:"),
+          h("p",{style:{fontSize:30,fontWeight:800,letterSpacing:6,color:"var(--accent)",margin:"0 0 12px"}},evCreated.code),
+          h("button",{onClick:()=>shareEvent(evCreated.code),style:{width:"100%",padding:"13px",fontSize:14,fontWeight:700,borderRadius:10,border:"1.5px solid var(--accent-border)",background:"var(--accent-bg)",color:"var(--accent)",cursor:"pointer",marginBottom:8}},"📤 Del turneringskoden"),
+          h("p",{style:{fontSize:11,color:"var(--muted)",margin:0,lineHeight:1.5}},"De andre gruppene velger «Bli med i turnering» og legger inn koden når de starter.")
+        ),
+        h("button",{className:"btn btnp",onClick:async()=>{
+          const room=startNewRound();
+          await attachEvent(evCreated.code,{roomCode:room});
+        }},"⛳ Start vår gruppe nå"),
+        h("button",{className:"btn",onClick:()=>{setViewCode(evCreated.code);setViewBack("tstart");setSc("tview");}},"👀 Se leaderboardet")
+      )
+    )
+  );
+
+  // ── TURNERING: BLI MED ───────────────────────────────────────────────────
+  if(scr==="tjoin")return h("div",{className:"sb-screen",key:"s_"+scr,style:{position:"relative",minHeight:"100vh",background:"var(--bg)",padding:"1rem 0"}},
+    h(PhotoBg,{screenKey:"home"}),
+    h("div",{style:{position:"relative",zIndex:1,padding:"64px 20px 80px"}},
+      h("button",{className:"btnback",onClick:()=>setSc("home")},"← Hjem"),
+      h("h2",{style:{fontSize:22,fontWeight:800,margin:"0 0 16px"}},"Bli med i turnering"),
+      h("input",{placeholder:"TOUR-XXXXX",value:evDraft,onChange:e=>setEvDraft(e.target.value.toUpperCase()),style:{fontSize:20,textAlign:"center",letterSpacing:5,marginBottom:10}}),
+      h("button",{className:"btn btnp",onClick:async()=>{
+        const d=evDraft.trim();if(!d)return;
+        const room=startNewRound();
+        const ok=await attachEvent(d,{roomCode:room});
+        if(!ok){alert(tr("Klarte ikke koble til — sjekk koden og nettet."));setSc("tjoin");}
+      }},"⛳ Start gruppa vår i turneringen"),
+      h("button",{className:"btn",onClick:async()=>{
+        const d=evDraft.trim();if(!d)return;
+        setViewCode(d.toUpperCase());setViewBack("tjoin");setSc("tview");
+      }},"👀 Bare se leaderboardet"),
+      (()=>{
+        const mine=myEvents();
+        if(!mine.length)return null;
+        return h("div",{style:{marginTop:24}},
+          h("p",{style:{fontSize:11,fontWeight:800,color:"var(--accent)",margin:"0 0 8px",letterSpacing:1.5,textTransform:"uppercase"}},"Mine turneringer"),
+          mine.map(ev=>h("div",{key:ev.code,className:"card",style:{display:"flex",alignItems:"center",gap:10}},
+            h("div",{style:{flex:1,minWidth:0}},
+              h("p",{style:{margin:0,fontWeight:700,fontSize:14,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},(EV_FORMATS[ev.format]?.icon||"🏆")+" "+(ev.name||EV_FORMATS[ev.format]?.label||"Turnering")),
+              h("p",{style:{margin:0,fontSize:11,color:"var(--muted)"}},ev.code)
+            ),
+            h("button",{onClick:async()=>{const room=startNewRound();await attachEvent(ev.code,{roomCode:room});},className:"bsm bsc",style:{flexShrink:0}},"⛳ Spill"),
+            h("button",{onClick:()=>{setViewCode(ev.code);setViewBack("tjoin");setSc("tview");},className:"bsm",style:{flexShrink:0}},"👀")
+          ))
+        );
+      })()
+    )
+  );
+
+  // ── TURNERING: TILSKODAR-VISNING ─────────────────────────────────────────
+  if(scr==="tview")return h("div",{className:"sb-screen",key:"s_"+scr,style:{position:"relative",minHeight:"100vh",background:"var(--bg)",padding:"1rem 0"}},
+    h(PhotoBg,{screenKey:"summary"}),
+    h("div",{style:{position:"relative",zIndex:1,padding:"64px 20px 80px"}},
+      h("button",{className:"btnback",onClick:()=>setSc(viewBack||"home")},"← Tilbake"),
+      (()=>{
+        const d=evData[viewCode];const reg=d?.reg||{};
+        return h("div",null,
+          h("h2",{style:{fontSize:22,fontWeight:800,margin:"0 0 2px"}},(EV_FORMATS[reg.format]?.icon||"🏆")+" "+(reg.name||EV_FORMATS[reg.format]?.label||"Turnering")),
+          h("p",{style:{fontSize:12,color:"var(--muted)",margin:"0 0 14px",letterSpacing:1}},viewCode),
+          h("div",{className:"card cs"},evBoard(viewCode)),
+          h("button",{onClick:()=>shareEvent(viewCode),className:"btn",style:{color:"var(--accent)",border:"1.5px solid var(--accent-border)",background:"var(--accent-bg)",fontWeight:700}},"📤 Del turneringskoden")
+        );
+      })()
+    )
+  );
+
   // ── SETUP ────────────────────────────────────────────────────────────────
   if(scr==="setup"){
     const nxt=()=>setStep(s=>Math.min(STEPS.length-1,s+1));
@@ -2336,46 +2702,40 @@ rfState({...rd,players:allPlayers,scr:"game"});}},"Bli med")
           h("p",{style:{fontSize:11,color:"var(--muted)",margin:"8px 0 0",lineHeight:1.4}},"Del lenken i gruppechatten — kompisene joiner med ett trykk.")
         ),
         rc&&h("div",{className:"card",style:{marginBottom:16}},
-          h("p",{style:{fontSize:11,fontWeight:800,color:"var(--accent)",margin:"0 0 8px",letterSpacing:1.5,textTransform:"uppercase"}},"🏆 Turnering (flere grupper)"),
-          !evCode&&h("div",null,
-            h("p",{style:{fontSize:12,color:"var(--muted)",margin:"0 0 10px",lineHeight:1.5}},"Guttetur? Koble gruppene sammen — live leaderboard på tvers, og sammenlagt over flere runder. Gruppene kan stokkes fritt mellom rundene: spillerne følges på navn."),
-            // Rask retur til forrige turnering (t.d. runde 2 paa dag 2)
-            (()=>{let last="";try{last=localStorage.getItem("sb_last_event")||"";}catch(e){}
-              return last?h("button",{onClick:async()=>{if(await attachEvent(last))setEvDraft("");else alert(tr("Klarte ikke koble til — sjekk koden og nettet."));},style:{width:"100%",padding:"12px",fontSize:14,fontWeight:800,borderRadius:10,border:"1.5px solid var(--accent)",background:"var(--accent-bg)",color:"var(--accent)",cursor:"pointer",marginBottom:10}},"🏆 Fortsett turneringen "+last):null;})(),
-            h("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}},
-              h("p",{style:{fontSize:12,fontWeight:700,color:"var(--text2)",margin:0}},"Antall runder i turneringen"),
-              h("div",{style:{display:"flex",alignItems:"center",gap:8}},
-                h("button",{onClick:()=>setEvNewTotal(x=>Math.max(1,x-1)),style:{width:34,height:34,borderRadius:"50%",border:"1px solid var(--accent-border)",background:"var(--bg3)",color:"var(--accent)",fontSize:16,cursor:"pointer",fontWeight:700}},"−"),
-                h("span",{style:{fontSize:16,fontWeight:800,color:"var(--accent)",minWidth:22,textAlign:"center"}},evNewTotal),
-                h("button",{onClick:()=>setEvNewTotal(x=>Math.min(14,x+1)),style:{width:34,height:34,borderRadius:"50%",border:"1px solid var(--accent-border)",background:"var(--bg3)",color:"var(--accent)",fontSize:16,cursor:"pointer",fontWeight:700}},"+")
-              )
-            ),
-            h("button",{onClick:async()=>{const c=makeEventCode();if(await attachEvent(c,1,evNewTotal))shareEvent(c);else alert(tr("Klarte ikke opprette turneringen — sjekk nettet og prøv igjen."));},style:{width:"100%",padding:"12px",fontSize:14,fontWeight:700,borderRadius:10,border:"1.5px solid var(--accent-border)",background:"var(--accent-bg)",color:"var(--accent)",cursor:"pointer"}},"🏆 Opprett turnering"),
-            h("p",{style:{fontSize:11,color:"var(--muted)",textAlign:"center",margin:"10px 0"}},"— eller —"),
-            h("div",{style:{display:"flex",gap:8}},
-              h("input",{placeholder:"TOUR-XXXXX",value:evDraft,onChange:e=>setEvDraft(e.target.value.toUpperCase()),style:{flex:1,textAlign:"center",letterSpacing:3,fontSize:15}}),
-              h("button",{onClick:async()=>{const d=evDraft.trim();if(!d)return;if(await attachEvent(d))setEvDraft("");else alert(tr("Klarte ikke koble til — sjekk koden og nettet."));},className:"bsm bsc",style:{minWidth:96}},"Koble til")
-            )
-          ),
-          evCode&&h("div",null,
-            h("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}},
-              h("div",null,
-                h("p",{style:{fontSize:20,fontWeight:800,letterSpacing:4,color:"var(--accent)",margin:0}},evCode),
-                evTotal>1&&h("p",{style:{fontSize:12,fontWeight:700,color:"var(--muted)",margin:"4px 0 0"}},"Runde "+evRound+" av "+evTotal)
+          h("p",{style:{fontSize:11,fontWeight:800,color:"var(--accent)",margin:"0 0 8px",letterSpacing:1.5,textTransform:"uppercase"}},"🏆 Turneringer"),
+          evLinks.length===0&&h("p",{style:{fontSize:12,color:"var(--muted)",margin:"0 0 10px",lineHeight:1.5}},"Koble runden til en eller flere turneringer — den kan telle i sesongturneringen og helge-cupen samtidig."),
+          // Tilkopla turneringar (med runde-veljar per link)
+          evLinks.map(link=>h("div",{key:link.code,style:{padding:"10px 12px",background:"var(--bg3)",borderRadius:10,marginBottom:8,border:"1px solid var(--accent-border)"}},
+            h("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
+              h("div",{style:{flex:1,minWidth:0}},
+                h("p",{style:{margin:0,fontSize:14,fontWeight:800,color:"var(--accent)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},(EV_FORMATS[link.format]?.icon||"🏆")+" "+(link.name||EV_FORMATS[link.format]?.label||"Turnering")),
+                h("p",{style:{margin:0,fontSize:11,color:"var(--muted)"}},link.code+(link.format==="season"?" · Runde "+link.round+" · sesong":link.total>1?" · Runde "+link.round+" av "+link.total:""))
               ),
-              h("button",{onClick:()=>shareEvent(),style:{padding:"10px 14px",fontSize:13,fontWeight:700,borderRadius:10,border:"1.5px solid var(--accent-border)",background:"var(--accent-bg)",color:"var(--accent)",cursor:"pointer",flexShrink:0,minHeight:44}},"📤 Del")
+              h("button",{onClick:()=>shareEvent(link.code),className:"bsm",style:{flexShrink:0}},"📤"),
+              h("button",{onClick:()=>detachEvent(link.code),className:"bsm",style:{flexShrink:0,color:"var(--red)"}},"✕")
             ),
-            evTotal>1&&h("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:10,padding:"8px 10px",background:"var(--bg3)",borderRadius:8}},
-              h("p",{style:{fontSize:11,color:"var(--muted)",margin:0,lineHeight:1.4,flex:1}},"Starter dere en ny runde i turneringen? Sett riktig rundenummer her."),
-              h("div",{style:{display:"flex",alignItems:"center",gap:8,flexShrink:0,marginLeft:8}},
-                h("button",{onClick:()=>setRoundInEvent(evRound-1),style:{width:32,height:32,borderRadius:"50%",border:"1px solid var(--accent-border)",background:"var(--bg2)",color:"var(--accent)",fontSize:15,cursor:"pointer",fontWeight:700}},"−"),
-                h("span",{style:{fontSize:15,fontWeight:800,color:"var(--accent)",minWidth:18,textAlign:"center"}},evRound),
-                h("button",{onClick:()=>setRoundInEvent(evRound+1),style:{width:32,height:32,borderRadius:"50%",border:"1px solid var(--accent-border)",background:"var(--bg2)",color:"var(--accent)",fontSize:15,cursor:"pointer",fontWeight:700}},"+")
+            (link.format!=="season"&&(link.total||0)>1)&&h("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:8}},
+              h("p",{style:{fontSize:10,color:"var(--muted)",margin:0,flex:1}},"Ny runde i turneringen? Sett rundenummer:"),
+              h("div",{style:{display:"flex",alignItems:"center",gap:6,flexShrink:0}},
+                h("button",{onClick:()=>setRoundInEvent(link.code,link.round-1),style:{width:30,height:30,borderRadius:"50%",border:"1px solid var(--accent-border)",background:"var(--bg2)",color:"var(--accent)",fontSize:14,cursor:"pointer",fontWeight:700}},"−"),
+                h("span",{style:{fontSize:14,fontWeight:800,color:"var(--accent)",minWidth:16,textAlign:"center"}},link.round),
+                h("button",{onClick:()=>setRoundInEvent(link.code,link.round+1),style:{width:30,height:30,borderRadius:"50%",border:"1px solid var(--accent-border)",background:"var(--bg2)",color:"var(--accent)",fontSize:14,cursor:"pointer",fontWeight:700}},"+")
               )
-            ),
-            h("p",{style:{fontSize:11,color:"var(--muted)",margin:"8px 0 0",lineHeight:1.5}},"Del koden med de andre gruppene — de legger den inn her når de starter sin runde. Live leaderboard finner dere inne i runden."),
-            h("button",{onClick:()=>{setEvCode("");setEvData(null);setEvOpen(false);},style:{background:"none",border:"none",color:"var(--muted)",fontSize:11,cursor:"pointer",marginTop:8,padding:0,textDecoration:"underline"}},"Koble fra turneringen")
-          )
+            )
+          )),
+          // Koble til (endaa) ein turnering med kode
+          h("div",{style:{display:"flex",gap:8}},
+            h("input",{placeholder:"TOUR-XXXXX",value:evDraft,onChange:e=>setEvDraft(e.target.value.toUpperCase()),style:{flex:1,textAlign:"center",letterSpacing:3,fontSize:15}}),
+            h("button",{onClick:async()=>{const d=evDraft.trim();if(!d)return;if(await attachEvent(d))setEvDraft("");else alert(tr("Klarte ikke koble til — sjekk koden og nettet."));},className:"bsm bsc",style:{minWidth:96}},"Koble til")
+          ),
+          // Snarveg til mine turneringar (t.d. sesongturneringa)
+          (()=>{
+            const mine=myEvents().filter(ev=>!evLinks.some(l=>l.code===ev.code)).slice(0,3);
+            if(!mine.length)return null;
+            return h("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}},
+              mine.map(ev=>h("button",{key:ev.code,onClick:async()=>{await attachEvent(ev.code);},className:"bsm",style:{fontSize:11}},(EV_FORMATS[ev.format]?.icon||"🏆")+" "+(ev.name||ev.code)))
+            );
+          })()
         ),
         players.map((p,i)=>h("div",{key:p.id,className:"card",style:{display:"flex",alignItems:"center",gap:12}},
           h(Av,{p,sz:48}),
@@ -3819,90 +4179,20 @@ Svar KUN med JSON:
         )
       ),
 
-      // ── Turnering: live leaderboard paa tvers av gruppene ──
-      evCode&&h("div",{className:"card cs"},
+      // ── Turneringar: eitt kort per tilkopla turnering ──
+      evLinks.map(link=>h("div",{key:"ev_"+link.code,className:"card cs"},
         h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}},
-          h("div",null,
-            h("p",{style:{fontSize:11,fontWeight:800,color:"var(--accent)",margin:"0 0 2px",letterSpacing:"0.1em",textTransform:"uppercase"}},"🏆 Turnering"),
-            h("p",{style:{fontSize:12,color:"var(--muted)",margin:0,letterSpacing:1}},evCode+(evTotal>1?" · Runde "+evRound+" av "+evTotal:""))
+          h("div",{style:{flex:1,minWidth:0}},
+            h("p",{style:{fontSize:11,fontWeight:800,color:"var(--accent)",margin:"0 0 2px",letterSpacing:"0.1em",textTransform:"uppercase",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},(EV_FORMATS[link.format]?.icon||"🏆")+" "+(link.name||EV_FORMATS[link.format]?.label||"Turnering")),
+            h("p",{style:{fontSize:12,color:"var(--muted)",margin:0,letterSpacing:1}},link.code+(link.format==="season"?" · Runde "+link.round:link.total>1?" · Runde "+link.round+" av "+link.total:""))
           ),
           h("div",{style:{display:"flex",gap:6,flexShrink:0}},
-            h("button",{onClick:()=>shareEvent(),className:"bsm"},"📤"),
-            h("button",{onClick:()=>setEvOpen(!evOpen),className:"bsm "+(evOpen?"bsc":"")},evOpen?"▲ Skjul":"Se leaderboard")
+            h("button",{onClick:()=>shareEvent(link.code),className:"bsm"},"📤"),
+            h("button",{onClick:()=>setEvOpen(o=>({...o,[link.code]:!o[link.code]})),className:"bsm "+(evOpen[link.code]?"bsc":"")},evOpen[link.code]?"▲ Skjul":"Se leaderboard")
           )
         ),
-        evOpen&&h("div",{style:{marginTop:12}},
-          (!evData&&evLoading)&&h("p",{style:{fontSize:13,color:"var(--muted)",margin:0}},h("span",{className:"sb-spinner"}),"Henter stillingen..."),
-          evData&&(()=>{
-            const fmt=v=>v===0?"E":v>0?"+"+v:String(v);
-            const col=(thru,tp)=>thru===0?"var(--muted-dim)":tp<0?"var(--green)":tp>0?"var(--red)":"var(--accent)";
-            const total=evData.roundsTotal||1;
-            const multi=total>1||evData.rooms.some(r=>(r.round||1)>1);
-            const curRound=evData.rooms.length?Math.max(...evData.rooms.map(r=>r.round||1)):1;
-            // Live-liste for gjeldande runde (som foer)
-            const liveRooms=multi?evData.rooms.filter(r=>(r.round||1)===curRound):evData.rooms;
-            const live=[];
-            liveRooms.forEach(r=>(r.lb||[]).forEach(e=>live.push({...e,grp:r.label,hcR:r.hc})));
-            live.sort((a,b)=>{
-              if((a.thru>0)!==(b.thru>0))return a.thru>0?-1:1;
-              if(a.toPar!==b.toPar)return a.toPar-b.toPar;
-              return b.thru-a.thru;
-            });
-            // SAMMENLAGT paa tvers av rundane — noekla paa NAMN, saa gruppene
-            // kan rotere fritt mellom rundane og scoren foelgjer spelaren.
-            let agg=[];
-            if(multi){
-              const m={};
-              evData.rooms.forEach(r=>{const rnd=r.round||1;(r.lb||[]).forEach(e=>{
-                const k=(e.n||"").trim().toLowerCase();if(!k)return;
-                if(!m[k])m[k]={n:e.n,rounds:{}};
-                const prev=m[k].rounds[rnd];
-                // same namn i to rom same runde: behald den med flest hull foert
-                if(!prev||e.thru>prev.thru)m[k].rounds[rnd]={toPar:e.toPar,sf:e.sf,thru:e.thru};
-              });});
-              agg=Object.values(m).map(a=>{
-                let toPar=0,sf=0,played=0,thru=0;
-                Object.values(a.rounds).forEach(rr=>{if(rr.thru>0){toPar+=rr.toPar;sf+=rr.sf;played++;thru+=rr.thru;}});
-                return {n:a.n,toPar,sf,played,thru};
-              }).sort((x,y)=>{
-                if((x.played>0)!==(y.played>0))return x.played>0?-1:1;
-                if(x.toPar!==y.toPar)return x.toPar-y.toPar;
-                return y.thru-x.thru;
-              });
-            }
-            const empty=live.length===0&&agg.length===0;
-            return h("div",null,
-              empty&&h("p",{style:{fontSize:13,color:"var(--muted)",margin:0}},"Ingen scorer ennå — stillingen dukker opp når gruppene begynner å føre."),
-              // SAMMENLAGT (fleirrundars turnering)
-              multi&&agg.length>0&&h("div",{style:{marginBottom:14}},
-                h("p",{style:{fontSize:10,fontWeight:800,color:"var(--gold)",margin:"0 0 6px",letterSpacing:"0.1em",textTransform:"uppercase"}},"Sammenlagt"),
-                agg.map((e,i)=>h("div",{key:"agg_"+e.n+i,style:{display:"flex",alignItems:"center",gap:8,padding:"7px 0",borderBottom:i<agg.length-1?"1px solid var(--border)":"none"}},
-                  h("span",{style:{fontSize:12,minWidth:22,color:i===0?"var(--gold)":"var(--muted)",fontWeight:800}},(i+1)+"."),
-                  h("div",{style:{flex:1,minWidth:0}},
-                    h("p",{style:{margin:0,fontSize:14,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},e.n),
-                    h("p",{style:{margin:0,fontSize:10,color:"var(--muted)"}},e.played+" runder · "+e.sf+"p stableford")
-                  ),
-                  h("span",{style:{fontSize:17,fontWeight:900,minWidth:46,textAlign:"right",flexShrink:0,color:col(e.played?1:0,e.toPar)}},e.played>0?fmt(e.toPar):"—")
-                ))
-              ),
-              // DENNE RUNDEN — live
-              live.length>0&&h("div",null,
-                multi&&h("p",{style:{fontSize:10,fontWeight:800,color:"var(--accent)",margin:"0 0 6px",letterSpacing:"0.1em",textTransform:"uppercase"}},"Runde "+curRound+" — live"),
-                live.map((e,i)=>h("div",{key:e.pid+"_"+i,style:{display:"flex",alignItems:"center",gap:8,padding:"7px 0",borderBottom:i<live.length-1?"1px solid var(--border)":"none"}},
-                  h("span",{style:{fontSize:12,minWidth:22,color:i===0?"var(--gold)":"var(--muted)",fontWeight:800}},(i+1)+"."),
-                  h("div",{style:{flex:1,minWidth:0}},
-                    h("p",{style:{margin:0,fontSize:14,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},e.n),
-                    h("p",{style:{margin:0,fontSize:10,color:"var(--muted)"}},e.grp)
-                  ),
-                  h("span",{style:{fontSize:11,color:"var(--muted)",flexShrink:0}},e.thru>0?e.thru+"/"+(e.hcR||18):"—"),
-                  h("span",{style:{fontSize:17,fontWeight:900,minWidth:46,textAlign:"right",flexShrink:0,color:col(e.thru,e.toPar)}},e.thru>0?fmt(e.toPar):"—")
-                ))
-              ),
-              !empty&&h("p",{style:{fontSize:10,color:"var(--text3)",margin:"10px 0 0",textAlign:"center"}},evData.rooms.length+" grupper"+(multi?" · "+total+" runder":"")+" · netto mot par · oppdateres automatisk")
-            );
-          })()
-        )
-      ),
+        evOpen[link.code]&&h("div",{style:{marginTop:12}},evBoard(link.code))
+      )),
 
       h(GamePanel,null),
 
