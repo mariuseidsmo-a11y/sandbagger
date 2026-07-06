@@ -441,6 +441,13 @@ const EN2={
 "Lag — beste 2 av 4":"Teams — best 2 of 4",
 "Hver gruppe er et lag: summen av de TO beste nettoscorene på hvert hull teller. Lavest lagtotal mot par vinner — society-klassikeren Am/Am.":"Each group is a team: the sum of the TWO best net scores on each hole counts. Lowest team total vs par wins — the society classic Am/Am.",
 "Utslagsturnering 1 mot 1: hver gruppe er én match (velg Match Play som spill, 2 spillere). Vinnerne setter opp neste rundes matcher selv.":"Knockout 1v1: each group is one match (pick Match Play as the game, 2 players). The winners set up the next round's matches themselves.",
+"Skins-pott":"Skins pot",
+"Skins på tvers av ALLE gruppene: lavest netto alene på hullet vinner skinnet. Delt hull? Skinnet ruller over til neste. Avtal verdi per skin — vinnerne gjør opp i baren.":"Skins across ALL the groups: lowest net alone on the hole wins the skin. Halved hole? The skin rolls over to the next. Agree on a value per skin — the winners settle up at the bar.",
+"Avgjorte hull":"Decided holes",
+"Ingen skins avgjort ennå":"No skins decided yet",
+"Plasseringspoeng per runde: 10-8-6-5-4-3-2-1. Delt plass gir samme poeng.":"Placement points per round: 10-8-6-5-4-3-2-1. Tied places get the same points.",
+"✨ Eclectic — drømmerunden":"✨ Eclectic — the dream round",
+"Beste netto mot par på hvert hull på tvers av alle rundene dine.":"Your best net vs par on every hole across all your rounds.",
 "Ren duell — 1 mot 1, hull for hull. Dere er ":"A pure duel — 1v1, hole by hole. You are ",
 "⌚ Garmin-klokke (beta)":"⌚ Garmin watch (beta)",
 "Har du Garmin Approach? Scorene fra klokka kan fylles inn i rommet automatisk mens du spiller — via et lite PC-skript (krever at en PC står på hjemme og at klokka synker mot Garmin Golf-appen på telefonen underveis).":"Got a Garmin Approach? Scores from the watch can auto-fill into the room while you play — via a small PC script (requires a PC running at home and the watch syncing to the Garmin Golf phone app during the round).",
@@ -639,6 +646,10 @@ function tr(s){
   r=r.replace(/Flere delt på /g,"Multiple tied on ");
   r=r.replace(/høyest og lavest/g,"highest and lowest");
   r=r.replace(/ingen betaling dette hullet \(kun rein topp mot rein bunn betaler\)/g,"no payment this hole (only a clean high vs clean low pays)");
+  r=r.replace(/Potten: (\d+) skins på neste hull/g,"The pot: $1 skins on the next hole");
+  r=r.replace(/ lavest netto ALENE vinner skinnet · delt hull ruller over · oppdateres automatisk/g," lowest net ALONE wins the skin · halved holes roll over · auto-refreshing");
+  r=r.replace(/Venter på hull (\d+) — alle må føre hullet før det avgjøres\./g,"Waiting for hole $1 — everyone must enter the hole before it's decided.");
+  r=r.replace(/(\d+) hull dekket/g,"$1 holes covered");
   r=r.replace(/\bhøyest\b/g,"highest").replace(/\blavest\b/g,"lowest");
   r=r.replace(/per hull\b/g,"per hole");
   r=r.replace(/kr i potten/g,"kr in the pot");
@@ -820,6 +831,7 @@ const EV_FORMATS={
   scramble:{icon:"🤝",label:"Scramble-lag",desc:"Hver gruppe er ETT lag: beste ball per hull teller. Laget med lavest total mot par vinner. Velg Scramble som spill i gruppene."},
   bestball2:{icon:"👥",label:"Beste 2 av 4",desc:"Hver gruppe er et lag: summen av de TO beste nettoscorene på hvert hull teller. Lavest lagtotal mot par vinner — society-klassikeren Am/Am."},
   cup:{icon:"🥊",label:"Match Play-cup",desc:"Utslagsturnering 1 mot 1: hver gruppe er én match (velg Match Play som spill, 2 spillere). Vinnerne setter opp neste rundes matcher selv."},
+  skinspot:{icon:"💰",label:"Skins-pott",desc:"Skins på tvers av ALLE gruppene: lavest netto alene på hullet vinner skinnet. Delt hull? Skinnet ruller over til neste. Avtal verdi per skin — vinnerne gjør opp i baren."},
   season:{icon:"📅",label:"Sesongturnering",desc:"Åpen turnering hele sesongen med faste gutta — spill så mange runder dere vil. Flest stableford-poeng sammenlagt vinner."}
 };
 
@@ -1864,14 +1876,15 @@ Svar KUN med JSON (ingen markdown):
   // alltid same tal som gruppa sjoelv ser (netto inkl. promille-slag).
   function lbNow(){
     return players.map(p=>{
-      let thru=0,toPar=0;
+      let thru=0,toPar=0;const hn={};
       for(let h_=1;h_<=hc;h_++){
         const s=scores[p.id]?.[h_];if(s==null)continue;
         thru++;
         const par=hp[String(h_)]||HOLE_PARS[h_]||4;
-        toPar+=(s-holeStrokes(p,h_))-par;
+        const rel=(s-holeStrokes(p,h_))-par;
+        toPar+=rel;hn[h_]=rel; // hn: netto mot par PER HULL — skins-pott og eclectic les denne
       }
-      return {pid:p.id,n:p.name.split(" ")[0],thru,toPar,sf:sfTot(p)};
+      return {pid:p.id,n:p.name.split(" ")[0],thru,toPar,sf:sfTot(p),hn};
     });
   }
   // Lag-blokk for Scramble-lag-turnering: HEILE gruppa som eitt lag,
@@ -2176,6 +2189,59 @@ Svar KUN med JSON (ingen markdown):
       );
     }
 
+    // ── SKINS-POTT: laagast netto ALEINE vinn hullet — paa tvers av gruppene.
+    // Hulla avgjerast i rekkjefoelgje og BERRE naar alle i feltet har foert
+    // hullet (elles kunne eit skin bli «vunne» foer siste gruppe var ferdig).
+    // Delte hull rullar over i potten til neste avgjorde hull.
+    if(format==="skinspot"){
+      const curR=rooms.length?Math.max(...rooms.map(r=>r.round||1)):1;
+      const liveR=rooms.filter(r=>(r.round||1)===curR);
+      const byName={};
+      liveR.forEach(r=>(r.lb||[]).forEach(e=>{
+        const k=evNorm(e.n);if(!k)return;
+        if(!byName[k]||e.thru>byName[k].thru)byName[k]={...e,grp:r.label,hcR:r.hc||18};
+      }));
+      const field=Object.values(byName);
+      if(field.length<2)return empty;
+      const hcMax=Math.max(...liveR.map(r=>r.hc||18));
+      let carry=0,waitH=null;const wins={},hist=[];
+      for(let h_=1;h_<=hcMax;h_++){
+        const vals=field.map(e=>({n:e.n,v:e.hn?e.hn[h_]:null})).filter(x=>x.v!=null);
+        if(vals.length<field.length){waitH=h_;break;}
+        const min=Math.min(...vals.map(x=>x.v));
+        const lows=vals.filter(x=>x.v===min);
+        if(lows.length===1){
+          const w=lows[0].n;const won=1+carry;
+          wins[w]=(wins[w]||0)+won;hist.push({h:h_,n:w,won});carry=0;
+        }else carry++;
+      }
+      const board=field.map(e=>({n:e.n,grp:e.grp,thru:e.thru,hcR:e.hcR,skins:wins[e.n]||0}))
+        .sort((a,b)=>b.skins!==a.skins?b.skins-a.skins:b.thru-a.thru);
+      return h("div",null,
+        carry>0&&h("div",{style:{padding:"8px 12px",background:"var(--gold-bg)",border:"1px solid var(--gold-border)",borderRadius:10,marginBottom:10,textAlign:"center"}},
+          h("p",{style:{margin:0,fontSize:13,fontWeight:800,color:"var(--gold)"}},"💰 Potten: "+(carry+1)+" skins på neste hull")
+        ),
+        secHead("Skins"),
+        board.map((e,i)=>h("div",{key:e.n+i,style:{display:"flex",alignItems:"center",gap:8,padding:"7px 0",borderBottom:i<board.length-1?"1px solid var(--border)":"none"}},
+          h("span",{style:{fontSize:12,minWidth:22,color:i===0&&e.skins>0?"var(--gold)":"var(--muted)",fontWeight:800}},(i+1)+"."),
+          h("div",{style:{flex:1,minWidth:0}},
+            h("p",{style:{margin:0,fontSize:14,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},e.n),
+            h("p",{style:{margin:0,fontSize:10,color:"var(--muted)"}},e.grp)
+          ),
+          h("span",{style:{fontSize:11,color:"var(--muted)",flexShrink:0}},e.thru>0?e.thru+"/"+e.hcR:"—"),
+          h("span",{style:{fontSize:17,fontWeight:900,minWidth:64,textAlign:"right",flexShrink:0,color:e.skins>0?"var(--gold)":"var(--muted-dim)"}},e.skins+" skins")
+        )),
+        hist.length>0&&h("div",{style:{marginTop:10}},
+          secHead("Avgjorte hull","var(--accent)"),
+          hist.slice(-5).reverse().map(x=>h("p",{key:x.h,style:{margin:"0 0 3px",fontSize:12,color:"var(--text2)"}},
+            "Hull "+x.h+" → "+x.n+" · "+x.won+(x.won===1?" skin":" skins")))
+        ),
+        waitH!=null&&h("p",{style:{fontSize:11,color:"var(--muted)",margin:"10px 0 0",textAlign:"center"}},"Venter på hull "+waitH+" — alle må føre hullet før det avgjøres."),
+        hist.length===0&&carry===0&&waitH==null&&h("p",{style:{fontSize:12,color:"var(--muted)",margin:"8px 0 0",textAlign:"center"}},"Ingen skins avgjort ennå"),
+        foot(rooms.length+" grupper · lavest netto ALENE vinner skinnet · delt hull ruller over · oppdateres automatisk")
+      );
+    }
+
     // ── INDIVIDUAL + SESONG: sammenlagt paa namn + live gjeldande runde ──
     const total=reg.roundsTotal||0;
     const isSeason=format==="season";
@@ -2189,15 +2255,43 @@ Svar KUN med JSON (ingen markdown):
       if(a.toPar!==b.toPar)return a.toPar-b.toPar;
       return b.thru-a.thru;
     });
-    let agg=[];
+    let agg=[],oom=[],ecl=[];
     if(multi){
       const m={};
       rooms.forEach(r=>{const rnd=r.round||1;(r.lb||[]).forEach(e=>{
         const k=evNorm(e.n);if(!k)return;
         if(!m[k])m[k]={n:e.n,rounds:{}};
         const prev=m[k].rounds[rnd];
-        if(!prev||e.thru>prev.thru)m[k].rounds[rnd]={toPar:e.toPar,sf:e.sf,thru:e.thru};
+        if(!prev||e.thru>prev.thru)m[k].rounds[rnd]={toPar:e.toPar,sf:e.sf,thru:e.thru,hn:e.hn||null};
       });});
+      if(isSeason){
+        // Order of Merit: plasseringspoeng per runde (10-8-6-5-4-3-2-1).
+        // Delt plass = same poeng (standard konkurranse-ranking).
+        const OOM_PTS=[10,8,6,5,4,3,2,1];
+        const rnds=[...new Set(Object.values(m).flatMap(a=>Object.keys(a.rounds).map(Number)))];
+        const pts={};
+        rnds.forEach(rnd=>{
+          const fin=Object.values(m).map(a=>({n:a.n,rr:a.rounds[rnd]})).filter(x=>x.rr&&x.rr.thru>0);
+          fin.sort((x,y)=>y.rr.sf!==x.rr.sf?y.rr.sf-x.rr.sf:x.rr.toPar-y.rr.toPar);
+          let rank=0;
+          fin.forEach((x,i)=>{
+            if(i>0&&(x.rr.sf!==fin[i-1].rr.sf||x.rr.toPar!==fin[i-1].rr.toPar))rank=i;
+            pts[x.n]=(pts[x.n]||0)+(OOM_PTS[rank]!=null?OOM_PTS[rank]:1);
+          });
+        });
+        oom=Object.entries(pts).map(([n,p])=>({n,p})).sort((a,b)=>b.p-a.p);
+        // Eclectic — droeymerunden: beste netto mot par PER HULL paa tvers av
+        // alle rundane dine i sesongen. Berre hn-blokker (nye rundar) tel.
+        ecl=Object.values(m).map(a=>{
+          const best={};
+          Object.values(a.rounds).forEach(rr=>{
+            if(!rr.hn)return;
+            Object.keys(rr.hn).forEach(hh=>{const v=rr.hn[hh];if(best[hh]==null||v<best[hh])best[hh]=v;});
+          });
+          const holes=Object.keys(best).length;
+          return {n:a.n,holes,tot:Object.values(best).reduce((s,v)=>s+v,0)};
+        }).filter(e=>e.holes>0).sort((a,b)=>a.tot!==b.tot?a.tot-b.tot:b.holes-a.holes);
+      }
       agg=Object.values(m).map(a=>{
         let toPar=0,sf=0,played=0,thru=0;
         Object.values(a.rounds).forEach(rr=>{if(rr.thru>0){toPar+=rr.toPar;sf+=rr.sf;played++;thru+=rr.thru;}});
@@ -2220,6 +2314,27 @@ Svar KUN med JSON (ingen markdown):
             h("p",{style:{margin:0,fontSize:10,color:"var(--muted)"}},e.played+" runder · "+(isSeason?fmt(e.toPar)+" mot par":e.sf+"p stableford"))
           ),
           h("span",{style:{fontSize:17,fontWeight:900,minWidth:52,textAlign:"right",flexShrink:0,color:isSeason?"var(--accent)":col(e.played>0,e.toPar)}},e.played>0?(isSeason?e.sf+"p":fmt(e.toPar)):"—")
+        ))
+      ),
+      isSeason&&oom.length>0&&h("div",{style:{marginBottom:14}},
+        secHead("🏅 Order of Merit","var(--gold)"),
+        h("p",{style:{fontSize:10,color:"var(--text3)",margin:"0 0 6px"}},"Plasseringspoeng per runde: 10-8-6-5-4-3-2-1. Delt plass gir samme poeng."),
+        oom.map((e,i)=>h("div",{key:"oom_"+e.n,style:{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:i<oom.length-1?"1px solid var(--border)":"none"}},
+          h("span",{style:{fontSize:12,minWidth:22,color:i===0?"var(--gold)":"var(--muted)",fontWeight:800}},(i+1)+"."),
+          h("p",{style:{margin:0,flex:1,minWidth:0,fontSize:14,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},e.n),
+          h("span",{style:{fontSize:16,fontWeight:900,flexShrink:0,color:"var(--gold)"}},e.p+"p")
+        ))
+      ),
+      isSeason&&ecl.length>0&&h("div",{style:{marginBottom:14}},
+        secHead("✨ Eclectic — drømmerunden","var(--accent)"),
+        h("p",{style:{fontSize:10,color:"var(--text3)",margin:"0 0 6px"}},"Beste netto mot par på hvert hull på tvers av alle rundene dine."),
+        ecl.map((e,i)=>h("div",{key:"ecl_"+e.n,style:{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:i<ecl.length-1?"1px solid var(--border)":"none"}},
+          h("span",{style:{fontSize:12,minWidth:22,color:i===0?"var(--gold)":"var(--muted)",fontWeight:800}},(i+1)+"."),
+          h("div",{style:{flex:1,minWidth:0}},
+            h("p",{style:{margin:0,fontSize:14,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},e.n),
+            h("p",{style:{margin:0,fontSize:10,color:"var(--muted)"}},e.holes+" hull dekket")
+          ),
+          h("span",{style:{fontSize:17,fontWeight:900,minWidth:46,textAlign:"right",flexShrink:0,color:col(true,e.tot)}},fmt(e.tot))
         ))
       ),
       live.length>0&&h("div",null,
