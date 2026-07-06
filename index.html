@@ -422,6 +422,15 @@ const EN2={
 "1 mot 1 — hull for hull, ekte matchspråk":"1v1 — hole by hole, real match-play language",
 "Duell på nettoscoren hull for hull: vinn hullet og gå '1 OPP'. Matchen er over når ledelsen er større enn hullene som gjenstår — da vinner du f.eks. '3&2'. Dormie, all square — hele språket. Med penger: fast innsats på matchen.":"A net-score duel hole by hole: win the hole and go '1 UP'. The match ends when the lead exceeds the holes remaining — winning e.g. '3&2'. Dormie, all square — the whole language. With money: fixed stake on the match.",
 "⚠️ Best Ball krever minst 3 spillere":"⚠️ Best Ball requires at least 3 players",
+"Felles beste drive — så egen ball inn":"Shared best drive — then your own ball in",
+"Alle slår ut, laget velger beste drive, og ALLE spiller egen ball derfra og inn. Beste nettoball i laget teller per hull. Mer golf enn scramble, mindre press enn best ball — guttetur-favoritten!":"Everyone tees off, the team picks the best drive, and EVERYONE plays their own ball from there. Best net ball in the team counts per hole. More golf than scramble, less pressure than best ball — the golf-trip favourite!",
+"Nå poengkvoten din — 36 minus handicap":"Hit your points quota — 36 minus handicap",
+"Alle får en kvote: 36 minus handicap. Du samler poeng på BRUTTO score (dobbeltbogey+=0, bogey=1, par=2, birdie=4, eagle=8). Den som slår kvoten sin mest, vinner. Perfekt utjevner når handicapene spriker!":"Everyone gets a quota: 36 minus handicap. You collect points on GROSS score (double bogey+=0, bogey=1, par=2, birdie=4, eagle=8). Whoever beats their quota by the most wins. The perfect equalizer for mixed handicaps!",
+"2 mot 2 — begge driver, velg beste, alternér":"2v2 — both drive, pick the best, alternate",
+"Begge på laget slår ut, dere velger beste drive, og spiller ANNENHVERT slag inn. Ett lag = én ball. Lagets score føres på førstemann i laget. Laghandicap: 60% av laveste + 40% av høyeste. Ryder Cup-klassikeren!":"Both team members tee off, you pick the best drive and play ALTERNATE shots in. One team = one ball. The team's score goes on the first player in the team. Team handicap: 60% of the lower + 40% of the higher. The Ryder Cup classic!",
+"🤙 Husk: velg beste drive i laget, så spiller alle egen ball derfra og inn.":"🤙 Remember: pick the team's best drive, then everyone plays their own ball in.",
+"Poeng på brutto: bogey 1 · par 2 · birdie 4 · eagle 8. Kvote = 36 − handicap. Mest OVER kvoten vinner.":"Points on gross: bogey 1 · par 2 · birdie 4 · eagle 8. Quota = 36 − handicap. Most OVER quota wins.",
+"⚠️ Greensomes krever nøyaktig 4 spillere":"⚠️ Greensomes requires exactly 4 players",
 "To lag der beste ball teller — spill 2 mot 2 (eller 2 mot 1). Legg til flere spillere eller velg et annet spill.":"Two teams where the best ball counts — play 2v2 (or 2v1). Add more players or pick another game.",
 "⚠️ Match Play krever nøyaktig 2 spillere":"⚠️ Match Play requires exactly 2 players",
 "Matchen gikk hele veien":"The match went the distance",
@@ -668,6 +677,9 @@ function tr(s){
   r=r.replace(/ mot par/g," vs par");
   r=r.replace(/^På lag med (.+) i periode 1:$/,"Teamed with $1 in period 1:");
   r=r.replace(/\b1 hull delt/g,"1 hole halved");
+  r=r.replace(/p av kvote (\d+) · (\d+) hull/g,"p of quota $1 · $2 holes");
+  r=r.replace(/^To lag à to spillere som deler én ball\. Dere er (\d+) nå\.$/,"Two teams of two sharing one ball. You are $1 right now.");
+  r=r.replace(/✍️ Før LAGETS slag på (.+) \(🔵\) og (.+) \(🔴\) — de andre radene ignoreres\. Laghandicap:/,"✍️ Enter the TEAM's strokes on $1 (🔵) and $2 (🔴) — the other rows are ignored. Team handicap:");
   r=r.replace(/(\d+) hull delt/g,"$1 holes halved");
   r=r.replace(/(\d+) hull spilt/g,"$1 holes played");
   r=r.replace(/(\d+) spilt/g,"$1 played");
@@ -796,6 +808,9 @@ const GAMES={
   joker:{id:"joker",label:"Joker Golf",tag:"morsom",short:"Matchplay med jokerkort — tving motstandere!",desc:"Matchplay der alle starter med 4 jokerkort. Spill kort strategisk: REPLAY tvinger en motstander til å slå på nytt, DOUBLE dobler hull-verdien, SHIELD beskytter ditt resultat, BOMB gjør birdie/par verdt dobbelt. Flest hull vinner runden!"},
   bestball:{id:"bestball",label:"Best Ball",tag:"lag",short:"To lag — beste ball i laget teller per hull",desc:"Velg lag fritt (2 mot 2, eller 2 mot 1). På hvert hull teller kun den beste nettoscoren i laget. Laget som vinner flest hull vinner. Med penger: taperlaget betaler per tapte hull. Verdens mest spilte lagformat!"},
   matchplay:{id:"matchplay",label:"Match Play",tag:"poeng",short:"1 mot 1 — hull for hull, ekte matchspråk",desc:"Duell på nettoscoren hull for hull: vinn hullet og gå '1 OPP'. Matchen er over når ledelsen er større enn hullene som gjenstår — da vinner du f.eks. '3&2'. Dormie, all square — hele språket. Med penger: fast innsats på matchen."},
+  shamble:{id:"shamble",label:"Shamble",tag:"lag",short:"Felles beste drive — så egen ball inn",desc:"Alle slår ut, laget velger beste drive, og ALLE spiller egen ball derfra og inn. Beste nettoball i laget teller per hull. Mer golf enn scramble, mindre press enn best ball — guttetur-favoritten!"},
+  quota:{id:"quota",label:"Quota",tag:"poeng",short:"Nå poengkvoten din — 36 minus handicap",desc:"Alle får en kvote: 36 minus handicap. Du samler poeng på BRUTTO score (dobbeltbogey+=0, bogey=1, par=2, birdie=4, eagle=8). Den som slår kvoten sin mest, vinner. Perfekt utjevner når handicapene spriker!"},
+  greensomes:{id:"greensomes",label:"Greensomes",tag:"lag",short:"2 mot 2 — begge driver, velg beste, alternér",desc:"Begge på laget slår ut, dere velger beste drive, og spiller ANNENHVERT slag inn. Ett lag = én ball. Lagets score føres på førstemann i laget. Laghandicap: 60% av laveste + 40% av høyeste. Ryder Cup-klassikeren!"},
 };
 
 // ── TURNERINGSFORMAT ─────────────────────────────────────────────────────
@@ -2281,6 +2296,36 @@ Svar KUN med JSON (ingen markdown):
     const margin=closed?closed.margin:(winner?Math.abs(lead)+" OPP":null);
     return {a,b,lead,played,lastHole,remaining,dormie,finished,winner,margin,done:!!closed||finished};
   }
+  // Quota: poeng paa BRUTTO score (dbl.bogey+=0, bogey=1, par=2, birdie=4,
+  // eagle+=8) maalt mot kvoten 36 − handicap. Sjoelvutjamnande format.
+  function quotaOf(p){
+    let pts=0,thru=0;
+    for(let h_=1;h_<=hc;h_++){
+      const s=scores[p.id]?.[h_];if(s==null)continue;
+      const par=hp[String(h_)]||HOLE_PARS[h_]||4;
+      const d=s-par;
+      pts+=d>=2?0:d===1?1:d===0?2:d===-1?4:8;
+      thru++;
+    }
+    const quota=36-Math.round(parseFloat(p.hcp)||0);
+    return {pts,quota,diff:pts-quota,thru};
+  }
+  // Greensomes: 2v2, eitt lag = ein ball. Lagets score foerast paa FOERSTE
+  // spelar i laget (carrier). Laghandicap etter standard 60/40-regelen.
+  function gsTeams(){
+    const {A,B}=bbTeams();
+    const tHcp=mem=>{
+      const hs=mem.map(p=>parseFloat(p.hcp)||0).sort((a,b)=>a-b);
+      return hs.length>=2?0.6*hs[0]+0.4*hs[hs.length-1]:(hs[0]||0);
+    };
+    const strokesAt=(mem,h_)=>hcpH(Math.round(tHcp(mem)),(hiRank[h_]!=null?hiRank[h_]:h_-1),hc);
+    const netAt=(mem,h_)=>{
+      const carrier=mem[0];if(!carrier)return null;
+      const s=scores[carrier.id]?.[h_];if(s==null)return null;
+      return s-strokesAt(mem,h_);
+    };
+    return {A,B,netAt,tHcp};
+  }
   // Felles oppstart av ny runde (heim, tstart, tjoin) — returnerer romkoden
   function startNewRound(){
     const ps=prof?[prof]:[];setPlayers(ps);setStep(0);
@@ -2488,7 +2533,7 @@ Svar KUN med JSON (ingen markdown):
       ps4.forEach(p=>t[p.id]=indiv[p.id]);
       return t;
     }
-    if(gid==="bestball"){
+    if(gid==="bestball"||gid==="shamble"){ // shamble: identisk scoring (beste ball), drive-regelen skjer paa banen
       const {A,B}=bbTeams();
       if(!A.length||!B.length)return t;
       for(let hh=1;hh<=hc;hh++){
@@ -2509,6 +2554,26 @@ Svar KUN med JSON (ingen markdown):
       if(!m||!m.winner)return t; // uavgjort/paagaaande = ingen betaling
       const loser=m.winner.id===m.a.id?m.b:m.a;
       t[m.winner.id]+=bet;t[loser.id]-=bet; // fast innsats paa matchen
+      return t;
+    }
+    if(gid==="quota"){
+      // nullsum: (diff − snitt-diff) × innsats — same modell som nines/bingo
+      const qd={};let sum=0;
+      players.forEach(p=>{qd[p.id]=quotaOf(p).diff;sum+=qd[p.id];});
+      const avg=players.length?sum/players.length:0;
+      players.forEach(p=>{t[p.id]=(qd[p.id]-avg)*bet;});
+      return t;
+    }
+    if(gid==="greensomes"){
+      const {A,B,netAt}=gsTeams();
+      if(A.length<2||B.length<2)return t;
+      for(let hh=1;hh<=hc;hh++){
+        const a=netAt(A,hh),b=netAt(B,hh);
+        if(a==null||b==null||a===b)continue;
+        const win=a<b?A:B,los=a<b?B:A;
+        los.forEach(p=>{t[p.id]-=bet;});
+        win.forEach(p=>{t[p.id]+=bet*los.length/win.length;});
+      }
       return t;
     }
     if(gid==="rabbit"){
@@ -4281,11 +4346,12 @@ Svar KUN med JSON:
         );
       }
 
-      // ── BEST BALL (to lag, beste ball teller) ──────────────────────────
-      if(gid==="bestball"){
+      // ── BEST BALL / SHAMBLE (to lag, beste ball teller) ────────────────
+      if(gid==="bestball"||gid==="shamble"){
+        const bbTitle=gid==="shamble"?"🤙 SHAMBLE":"⛳ BEST BALL";
         if(players.length<3){
           return h("div",{className:"card ci"},
-            h("p",{style:{fontSize:11,fontWeight:800,color:"var(--blue)",margin:"0 0 8px",letterSpacing:"0.1em",textTransform:"uppercase"}},"⛳ BEST BALL"),
+            h("p",{style:{fontSize:11,fontWeight:800,color:"var(--blue)",margin:"0 0 8px",letterSpacing:"0.1em",textTransform:"uppercase"}},bbTitle),
             h("p",{style:{fontSize:14,fontWeight:700,color:"var(--red)",margin:"0 0 4px"}},"⚠️ Best Ball krever minst 3 spillere"),
             h("p",{style:{fontSize:13,color:"var(--muted)",margin:0,lineHeight:1.4}},"To lag der beste ball teller — spill 2 mot 2 (eller 2 mot 1). Legg til flere spillere eller velg et annet spill.")
           );
@@ -4304,8 +4370,9 @@ Svar KUN med JSON:
         const bbKr=money?gameT():null;
         return h("div",{className:"card ci"},
           h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
-            h("p",{style:{fontSize:11,fontWeight:800,color:"var(--blue)",margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}},"⛳ BEST BALL — Hull "+hole),infoBtn),
+            h("p",{style:{fontSize:11,fontWeight:800,color:"var(--blue)",margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}},bbTitle+" — Hull "+hole),infoBtn),
           info,
+          gid==="shamble"&&h("p",{style:{fontSize:11,color:"var(--muted)",margin:"0 0 10px",lineHeight:1.4}},"🤙 Husk: velg beste drive i laget, så spiller alle egen ball derfra og inn."),
           // Lagvalg (same chips som scramble)
           h("div",{style:{marginBottom:12}},
             h("p",{style:{fontSize:10,fontWeight:800,color:"var(--muted)",margin:"0 0 6px",letterSpacing:"0.08em",textTransform:"uppercase"}},"Velg lag — trykk navn for å bytte"),
@@ -4398,6 +4465,92 @@ Svar KUN med JSON:
           ),
           money&&h("p",{style:{fontSize:11,color:"var(--gold)",textAlign:"center",margin:"10px 0 0",fontWeight:700}},
             m.winner?("💰 "+m.winner.name.split(" ")[0]+" vinner "+uval+"kr"):"💰 "+uval+"kr på matchen — uavgjort = ingen betaling")
+        );
+      }
+
+      // ── QUOTA (naa kvoten din: 36 − hcp) ───────────────────────────────
+      if(gid==="quota"){
+        const rows=players.map(p=>({p,...quotaOf(p)})).sort((a,b)=>b.diff-a.diff);
+        return h("div",{className:"card ci"},
+          h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
+            h("p",{style:{fontSize:11,fontWeight:800,color:"var(--blue)",margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}},"🎯 QUOTA"),infoBtn),
+          info,
+          h("p",{style:{fontSize:12,color:"var(--muted)",marginBottom:10,lineHeight:1.4}},"Poeng på brutto: bogey 1 · par 2 · birdie 4 · eagle 8. Kvote = 36 − handicap. Mest OVER kvoten vinner."),
+          rows.map((r,i)=>h("div",{key:r.p.id,style:{display:"flex",alignItems:"center",gap:8,padding:"7px 0",borderBottom:i<rows.length-1?"1px solid var(--blue-border)":"none"}},
+            h("span",{style:{fontSize:14,minWidth:22}},i===0?"🏆":i===1?"🥈":i===2?"🥉":""),
+            h(Av,{p:r.p,sz:28}),
+            h("div",{style:{flex:1}},
+              h("p",{style:{margin:0,fontSize:13,fontWeight:700}},r.p.name.split(" ")[0]),
+              h("p",{style:{margin:0,fontSize:10,color:"var(--muted)"}},r.pts+"p av kvote "+r.quota+" · "+r.thru+" hull")
+            ),
+            h("span",{style:{fontSize:18,fontWeight:900,color:r.diff>0?"var(--green)":r.diff<0?"var(--red)":"var(--muted)"}},(r.diff>0?"+":"")+r.diff)
+          ))
+        );
+      }
+
+      // ── GREENSOMES (2v2 alternate shot, eitt lag = ein ball) ──────────
+      if(gid==="greensomes"){
+        if(players.length!==4){
+          return h("div",{className:"card ci"},
+            h("p",{style:{fontSize:11,fontWeight:800,color:"var(--blue)",margin:"0 0 8px",letterSpacing:"0.1em",textTransform:"uppercase"}},"🔁 GREENSOMES"),
+            h("p",{style:{fontSize:14,fontWeight:700,color:"var(--red)",margin:"0 0 4px"}},"⚠️ Greensomes krever nøyaktig 4 spillere"),
+            h("p",{style:{fontSize:13,color:"var(--muted)",margin:0,lineHeight:1.4}},"To lag à to spillere som deler én ball. Dere er "+players.length+" nå.")
+          );
+        }
+        const {A,B,netAt,tHcp,pickOf}={...gsTeams(),pickOf:bbTeams().pickOf};
+        let wA=0,wB=0,hv=0;
+        for(let hh=1;hh<=hc;hh++){
+          const a=netAt(A,hh),b=netAt(B,hh);
+          if(a==null||b==null)continue;
+          if(a<b)wA++;else if(b<a)wB++;else hv++;
+        }
+        const gsKr=money?gameT():null;
+        return h("div",{className:"card ci"},
+          h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
+            h("p",{style:{fontSize:11,fontWeight:800,color:"var(--blue)",margin:0,letterSpacing:"0.1em",textTransform:"uppercase"}},"🔁 GREENSOMES — Hull "+hole),infoBtn),
+          info,
+          // Lagvalg
+          h("div",{style:{marginBottom:10}},
+            h("p",{style:{fontSize:10,fontWeight:800,color:"var(--muted)",margin:"0 0 6px",letterSpacing:"0.08em",textTransform:"uppercase"}},"Velg lag — trykk navn for å bytte"),
+            h("div",{style:{display:"flex",gap:6,flexWrap:"wrap"}},
+              players.map((p,i)=>{
+                const tm=pickOf(p,i);
+                return h("button",{key:p.id,onClick:()=>setTeamPick(prev=>({...prev,[p.id]:tm==="A"?"B":"A"})),style:{
+                  padding:"8px 12px",fontSize:12,fontWeight:700,borderRadius:8,cursor:"pointer",
+                  border:"1.5px solid "+(tm==="A"?"var(--blue-border)":"var(--red-border)"),
+                  background:tm==="A"?"var(--blue-bg)":"var(--red-bg)",
+                  color:tm==="A"?"var(--blue)":"var(--red)"
+                }},p.name.split(" ")[0]+(tm==="A"?" 🔵":" 🔴"));
+              })
+            )
+          ),
+          // Carrier-instruks: lagets score foerast paa foerste spelar i laget
+          h("div",{style:{padding:"8px 10px",background:"var(--amber-bg)",borderRadius:8,border:"1px solid var(--amber-border)",marginBottom:10}},
+            h("p",{style:{fontSize:11,color:"var(--gold)",fontWeight:700,margin:0,lineHeight:1.5}},
+              "✍️ Før LAGETS slag på "+(A[0]?A[0].name.split(" ")[0]:"?")+" (🔵) og "+(B[0]?B[0].name.split(" ")[0]:"?")+" (🔴) — de andre radene ignoreres. Laghandicap: 🔵 "+(A.length>=2?tHcp(A).toFixed(1):"—")+" · 🔴 "+(B.length>=2?tHcp(B).toFixed(1):"—"))
+          ),
+          // Stilling
+          h("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:14,marginBottom:8}},
+            h("div",{style:{textAlign:"center"}},
+              h("p",{style:{margin:0,fontSize:11,fontWeight:800,color:"var(--blue)",textTransform:"uppercase"}},A.map(p=>p.name.split(" ")[0]).join(" + ")),
+              h("p",{style:{margin:0,fontSize:34,fontWeight:900,color:"var(--blue)",fontFamily:"'Bebas Neue',Impact"}},wA)
+            ),
+            h("p",{style:{margin:0,fontSize:16,color:"var(--muted)",fontWeight:700}},"—"),
+            h("div",{style:{textAlign:"center"}},
+              h("p",{style:{margin:0,fontSize:11,fontWeight:800,color:"var(--red)",textTransform:"uppercase"}},B.map(p=>p.name.split(" ")[0]).join(" + ")),
+              h("p",{style:{margin:0,fontSize:34,fontWeight:900,color:"var(--red)",fontFamily:"'Bebas Neue',Impact"}},wB)
+            )
+          ),
+          hv>0&&h("p",{style:{fontSize:11,color:"var(--muted)",textAlign:"center",margin:"0 0 8px"}},hv+" hull delt"),
+          money&&gsKr&&h("div",{style:{background:"#080c18",borderRadius:8,padding:"10px 12px"}},
+            h("p",{style:{fontSize:10,color:"var(--blue)",fontWeight:800,marginBottom:6,textTransform:"uppercase",letterSpacing:"0.08em"}},"Saldo"),
+            [...players].sort((x,y)=>(gsKr[y.id]||0)-(gsKr[x.id]||0)).map(p=>
+              h("div",{key:p.id,style:{display:"flex",justifyContent:"space-between",padding:"3px 0"}},
+                h("span",{style:{fontSize:13,fontWeight:600,color:"#fff"}},p.name.split(" ")[0]),
+                h("span",{style:{fontSize:14,fontWeight:800,color:(gsKr[p.id]||0)>0?"var(--green)":(gsKr[p.id]||0)<0?"var(--red)":"var(--muted)"}},((gsKr[p.id]||0)>0?"+":"")+(gsKr[p.id]||0)+"kr")
+              )
+            )
+          )
         );
       }
 
